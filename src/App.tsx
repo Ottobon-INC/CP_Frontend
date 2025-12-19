@@ -1,0 +1,57 @@
+import { Switch, Route } from "wouter";
+import { queryClient } from "./lib/queryClient";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { Toaster } from "@/components/ui/toaster";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import NotFound from "@/pages/not-found";
+import AssessmentPage from "@/pages/AssessmentPage";
+import EnrollmentPage from "@/pages/EnrollmentPage";
+import CoursePlayerPage from "@/pages/CoursePlayerPage";
+import CongratsPage from "@/pages/CongratsPage";
+import CongratsFeedbackPage from "@/pages/CongratsFeedbackPage";
+import CourseCertificatePage from "@/pages/CourseCertificatePage";
+import LearningPathPage from "@/pages/LearningPathPage";
+import LandingPage from "@/pages/LandingPage";
+import AuthCallbackPage from "@/pages/AuthCallbackPage";
+import BecomeTutorPage from "@/pages/BecomeTutorPage";
+import CourseDetailsPage from "@/pages/CourseDetailsPage";
+import TutorDashboardPage from "@/pages/TutorDashboardPage";
+
+function Router() {
+  return (
+    <Switch>
+      <Route path="/become-a-tutor" component={BecomeTutorPage} />
+
+      {/* Course Routes */}
+      <Route path="/course/:id/assessment" component={AssessmentPage} />
+       <Route path="/course/:id/enroll" component={EnrollmentPage} />
+       <Route path="/course/:id/path" component={LearningPathPage} />
+       <Route path="/course/:id/learn/:lesson" component={CoursePlayerPage} />
+       <Route path="/course/:id/congrats/certificate" component={CourseCertificatePage} />
+       <Route path="/course/:id/congrats/feedback" component={CongratsFeedbackPage} />
+       <Route path="/course/:id/congrats" component={CongratsPage} />
+       <Route path="/course/:id" component={CourseDetailsPage} />
+       <Route path="/auth/callback" component={AuthCallbackPage} />
+       <Route path="/tutors" component={TutorDashboardPage} />
+
+       {/* Default route goes to dashboard */}
+       <Route path="/" component={LandingPage} />
+      
+      {/* Fallback to 404 */}
+      <Route component={NotFound} />
+    </Switch>
+  );
+}
+
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Router />
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+}
+
+export default App;
