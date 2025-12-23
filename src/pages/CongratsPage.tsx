@@ -99,7 +99,6 @@ const FireworkBurst = () => {
               animation: `burst ${particle.duration}s cubic-bezier(0.22, 0.68, 0.12, 1) forwards`,
               // @ts-expect-error custom property for animation
               "--angle": `${particle.angle}rad`,
-              // @ts-expect-error custom property for animation
               "--velocity": `${particle.velocity}px`,
             }}
           />
