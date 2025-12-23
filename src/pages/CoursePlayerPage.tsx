@@ -1479,8 +1479,8 @@ const CoursePlayerPage: React.FC = () => {
                         onClick={() => handleSubmoduleSelect(sub)}
                         aria-disabled={!sub.unlocked}
                         className={`w-full flex items-center gap-3 p-2 rounded-md text-xs transition text-left border ${active
-                            ? "bg-[#bf2f1f] border-[#bf2f1f] text-white"
-                            : "hover:bg-white/5 border-transparent text-[#f8f1e6]/70"
+                          ? "bg-[#bf2f1f] border-[#bf2f1f] text-white"
+                          : "hover:bg-white/5 border-transparent text-[#f8f1e6]/70"
                           } ${!sub.unlocked ? "opacity-40 cursor-not-allowed hover:bg-transparent" : ""}`}
                       >
                         {sub.type === "quiz" ? <FileText size={14} className="flex-shrink-0" /> : <Play size={14} className="flex-shrink-0" />}
@@ -1613,8 +1613,8 @@ const CoursePlayerPage: React.FC = () => {
                     <button
                       onClick={() => setIsReadingMode(!isReadingMode)}
                       className={`flex w-full sm:w-auto items-center justify-center gap-2 px-4 py-2 rounded-lg border-2 font-bold text-sm transition ${isReadingMode
-                          ? "bg-[#bf2f1f] text-white border-[#bf2f1f] hover:bg-[#a62619]"
-                          : "bg-white text-[#000000] border-[#000000] hover:bg-[#4a4845]/10"
+                        ? "bg-[#bf2f1f] text-white border-[#bf2f1f] hover:bg-[#a62619]"
+                        : "bg-white text-[#000000] border-[#000000] hover:bg-[#4a4845]/10"
                         }`}
                     >
                       {isReadingMode ? (
@@ -1737,8 +1737,8 @@ const CoursePlayerPage: React.FC = () => {
                                 key={opt.optionId}
                                 onClick={() => setAnswers((prev) => ({ ...prev, [q.questionId]: opt.optionId }))}
                                 className={`p-4 text-left rounded-lg border-2 font-medium transition-all ${answers[q.questionId] === opt.optionId
-                                    ? "bg-[#000000] text-white border-[#000000]"
-                                    : "bg-white border-[#4a4845]/20 hover:border-[#000000]"
+                                  ? "bg-[#000000] text-white border-[#000000]"
+                                  : "bg-white border-[#4a4845]/20 hover:border-[#000000]"
                                   }`}
                               >
                                 {opt.text}
@@ -1763,8 +1763,8 @@ const CoursePlayerPage: React.FC = () => {
                   <div className="text-center animate-fade-in space-y-6">
                     <div
                       className={`inline-flex p-6 rounded-full border-4 mb-4 ${quizResult.passed
-                          ? "bg-green-100 border-green-500 text-green-600"
-                          : "bg-red-100 border-red-500 text-red-600"
+                        ? "bg-green-100 border-green-500 text-green-600"
+                        : "bg-red-100 border-red-500 text-red-600"
                         }`}
                     >
                       {quizResult.passed ? <BookOpen size={48} /> : <X size={48} />}
@@ -1848,8 +1848,8 @@ const CoursePlayerPage: React.FC = () => {
                               disabled={chatLoading}
                               onClick={() => handleSuggestionSelect(suggestion)}
                               className={`px-4 py-1.5 rounded-full text-xs border transition ${chatLoading
-                                  ? "opacity-40 cursor-not-allowed border-[#4a4845]/40 text-[#f8f1e6]/40"
-                                  : "border-white/25 text-white/80 hover:border-white hover:text-white"
+                                ? "opacity-40 cursor-not-allowed border-[#4a4845]/40 text-[#f8f1e6]/40"
+                                : "border-white/25 text-white/80 hover:border-white hover:text-white"
                                 }`}
                             >
                               {suggestion.promptText}
@@ -1881,8 +1881,8 @@ const CoursePlayerPage: React.FC = () => {
                             disabled={chatLoading}
                             onClick={() => handleSuggestionSelect(suggestion)}
                             className={`px-3 py-1 rounded-full text-xs border transition ${chatLoading
-                                ? "opacity-50 cursor-not-allowed border-[#4a4845]/40 text-[#f8f1e6]/40"
-                                : "border-[#f8f1e6]/30 text-[#f8f1e6]/80 hover:border-white hover:text-white"
+                              ? "opacity-50 cursor-not-allowed border-[#4a4845]/40 text-[#f8f1e6]/40"
+                              : "border-[#f8f1e6]/30 text-[#f8f1e6]/80 hover:border-white hover:text-white"
                               }`}
                           >
                             {suggestion.promptText}
@@ -2096,15 +2096,15 @@ const CoursePlayerPage: React.FC = () => {
                       type="button"
                       onClick={() => setPersonaPending(option)}
                       className={`text-left border rounded-xl p-4 transition focus:outline-none ${personaPending === option
-                          ? "border-[#bf2f1f] bg-[#bf2f1f]/5 shadow-inner"
-                          : "border-[#4a4845]/20 hover:border-[#bf2f1f]"
+                        ? "border-[#bf2f1f] bg-[#bf2f1f]/5 shadow-inner"
+                        : "border-[#4a4845]/20 hover:border-[#bf2f1f]"
                         }`}
                     >
                       <div className="flex items-center justify-between gap-2">
                         <div className="font-semibold text-[#000000]">{personaOptions[option].label}</div>
                         <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-[#bf2f1f]">
                           {recommendedPersona === option && !activePersonalizedPersona && <span>Recommended</span>}
-                          {activePersonalizedPersona === option && option !== "normal" && <span>Saved</span>}
+                          {activePersonalizedPersona === option && <span>Saved</span>}
                         </div>
                       </div>
                       <p className="text-sm text-[#4a4845]">{personaOptions[option].description}</p>
