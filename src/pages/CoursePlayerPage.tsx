@@ -22,9 +22,11 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { buildApiUrl } from "@/lib/api";
-import { ensureSessionFresh, readStoredSession } from "@/utils/session";
+import { subscribeToSession } from "@/utils/session";
+import { recordTelemetryEvent, updateTelemetryAccessToken } from "@/utils/telemetry";
 import type { StoredSession } from "@/types/session";
 import SimulationExercise, { SimulationPayload } from "@/components/SimulationExercise";
+import ColdCalling from "@/components/ColdCalling";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
@@ -362,6 +364,7 @@ const CoursePlayerPage: React.FC = () => {
   const [expandedModules, setExpandedModules] = useState<number[]>([]);
   const [isControlsVisible, setIsControlsVisible] = useState(true);
   const controlsTimeoutRef = useRef<number | null>(null);
+  const lastProgressSnapshotRef = useRef<number | null>(null);
   const [passedQuizzes, setPassedQuizzes] = useState<Set<string>>(new Set());
 
   // Video playback state
@@ -447,6 +450,8 @@ const CoursePlayerPage: React.FC = () => {
   ]);
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
+  const [chatSessionId, setChatSessionId] = useState<string | null>(null);
+  const [chatHistoryLoading, setChatHistoryLoading] = useState(false);
   const [starterSuggestions, setStarterSuggestions] = useState<PromptSuggestion[]>([]);
   const [inlineFollowUps, setInlineFollowUps] = useState<Record<string, PromptSuggestion[]>>({});
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
@@ -491,6 +496,26 @@ const CoursePlayerPage: React.FC = () => {
   const activeLesson = useMemo(
     () => lessons.find((l) => l.slug === activeSlug) ?? lessons[0],
     [lessons, activeSlug],
+  );
+  const emitTelemetry = useCallback(
+    (
+      eventType: string,
+      payload?: Record<string, unknown>,
+      context?: { courseId?: string | null; moduleNo?: number | null; topicId?: string | null },
+    ) => {
+      const resolvedCourseId = context?.courseId ?? activeLesson?.courseId ?? lessons[0]?.courseId ?? null;
+      if (!resolvedCourseId) {
+        return;
+      }
+      recordTelemetryEvent({
+        courseId: resolvedCourseId,
+        moduleNo: context?.moduleNo ?? activeLesson?.moduleNo ?? null,
+        topicId: context?.topicId ?? activeLesson?.topicId ?? null,
+        eventType,
+        payload,
+      });
+    },
+    [activeLesson?.courseId, activeLesson?.moduleNo, activeLesson?.topicId, lessons],
   );
   const activePptEmbedUrl = useMemo(() => buildOfficeViewerUrl(activeLesson?.pptUrl), [activeLesson?.pptUrl]);
   const currentModuleId = activeLesson?.moduleNo ?? modules[0]?.id ?? 1;
@@ -581,7 +606,70 @@ const CoursePlayerPage: React.FC = () => {
     setVisibleStarterSuggestions([]);
     setShouldRefreshStarterBatch(true);
     setStarterAnchorMessageId(welcomeId);
+    setChatSessionId(null);
+    setChatHistoryLoading(false);
   }, [activeLesson?.slug, greetingMessage]);
+
+  const loadChatHistory = useCallback(async () => {
+    if (!chatOpen) {
+      return;
+    }
+    if (!session?.accessToken) {
+      return;
+    }
+    const courseIdForChat = (courseKey ?? activeLesson?.courseId ?? "").trim();
+    const topicIdForChat = activeLesson?.topicId ?? null;
+    if (!courseIdForChat || !topicIdForChat) {
+      return;
+    }
+
+    setChatHistoryLoading(true);
+    try {
+      const res = await fetch(
+        buildApiUrl(
+          `/assistant/session?courseId=${encodeURIComponent(courseIdForChat)}&topicId=${topicIdForChat}`,
+        ),
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${session.accessToken}`,
+          },
+          credentials: "include",
+        },
+      );
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) {
+        return;
+      }
+      const history = Array.isArray(payload?.messages) ? payload.messages : [];
+      if (history.length > 0) {
+        const welcomeId = `welcome-${activeLesson?.slug ?? "welcome"}`;
+        const mapped: ChatMessage[] = history.map((message: any) => ({
+          id: typeof message?.messageId === "string" ? message.messageId : makeId(),
+          text: typeof message?.content === "string" ? message.content : "",
+          isBot: message?.role !== "user",
+        }));
+        setChatMessages([{ id: welcomeId, text: greetingMessage, isBot: true }, ...mapped]);
+        const lastBot = [...mapped].reverse().find((msg) => msg.isBot);
+        setStarterAnchorMessageId(lastBot?.id ?? welcomeId);
+      }
+      setChatSessionId(typeof payload?.sessionId === "string" ? payload.sessionId : null);
+    } finally {
+      setChatHistoryLoading(false);
+    }
+  }, [
+    activeLesson?.courseId,
+    activeLesson?.slug,
+    activeLesson?.topicId,
+    chatOpen,
+    courseKey,
+    greetingMessage,
+    session?.accessToken,
+  ]);
+
+  useEffect(() => {
+    void loadChatHistory();
+  }, [loadChatHistory]);
 
   const getLessonTextForPersona = useCallback((lesson: Lesson | null | undefined, persona: StudyPersona) => {
     if (!lesson) {
@@ -785,14 +873,16 @@ const CoursePlayerPage: React.FC = () => {
     setPersonaPending(recommended);
     setSurveyComplete(true);
     setForceSurvey(false);
-  }, [surveyResponses]);
+    emitTelemetry("persona.survey_complete", { persona: recommended });
+  }, [surveyResponses, emitTelemetry]);
 
   const handleSurveyRestart = useCallback(() => {
     setSurveyResponses({});
     setSurveyComplete(false);
     setRecommendedPersona(null);
     setForceSurvey(true);
-  }, []);
+    emitTelemetry("persona.survey_restart");
+  }, [emitTelemetry]);
 
   const handleOpenPersonaModal = useCallback(() => {
     if (!session?.accessToken) {
@@ -803,6 +893,7 @@ const CoursePlayerPage: React.FC = () => {
       });
       return;
     }
+    emitTelemetry("persona.modal_open");
     if (!activePersonalizedPersona) {
       setSurveyResponses({});
       setSurveyComplete(false);
@@ -811,7 +902,7 @@ const CoursePlayerPage: React.FC = () => {
     setPersonaPromptDismissed(false);
     setPersonaPending(studyPersona);
     setShowPersonaModal(true);
-  }, [session?.accessToken, studyPersona, toast, activePersonalizedPersona]);
+  }, [session?.accessToken, studyPersona, toast, activePersonalizedPersona, emitTelemetry]);
 
   const handleSavePersonaPreference = useCallback(async () => {
     const choice = personaPending;
@@ -847,6 +938,7 @@ const CoursePlayerPage: React.FC = () => {
       setHasPersonaPreference(stillHasPersona);
       setPersonaPromptDismissed(false);
       setShowPersonaModal(false);
+      emitTelemetry("persona.preference_saved", { persona: choice });
       toast({ title: "Study style updated" });
     } catch (error) {
       toast({
@@ -857,7 +949,7 @@ const CoursePlayerPage: React.FC = () => {
     } finally {
       setPersonaSaving(false);
     }
-  }, [courseKey, personaPending, session?.accessToken, toast, activePersonalizedPersona, personaHistoryKey]);
+  }, [courseKey, personaPending, session?.accessToken, toast, activePersonalizedPersona, personaHistoryKey, emitTelemetry]);
 
   const handleDismissPersonaModal = useCallback(() => {
     setShowPersonaModal(false);
@@ -984,13 +1076,92 @@ const CoursePlayerPage: React.FC = () => {
   }, [fetchPromptSuggestions]);
 
   useEffect(() => {
-    const hydrateSession = async () => {
-      const stored = readStoredSession();
-      const fresh = await ensureSessionFresh(stored);
-      setSession(fresh);
-    };
-    void hydrateSession();
+    if (!activeLesson?.topicId) {
+      return;
+    }
+    emitTelemetry("lesson.view", {
+      slug: activeLesson.slug,
+      moduleNo: activeLesson.moduleNo,
+      topicNumber: activeLesson.topicNumber,
+    });
+  }, [activeLesson?.topicId, activeLesson?.moduleNo, activeLesson?.topicNumber, activeLesson?.slug, emitTelemetry]);
+
+  useEffect(() => {
+    const unsubscribe = subscribeToSession((nextSession) => {
+      setSession(nextSession);
+      updateTelemetryAccessToken(nextSession?.accessToken ?? null);
+    });
+    return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    updateTelemetryAccessToken(session?.accessToken ?? null);
+  }, [session?.accessToken]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof document === "undefined" || !activeLesson?.topicId) {
+      return;
+    }
+    let idle = false;
+    let idleTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const markActive = () => {
+      if (idle) {
+        idle = false;
+        emitTelemetry("idle.end");
+      }
+      if (idleTimer) {
+        window.clearTimeout(idleTimer);
+      }
+      idleTimer = window.setTimeout(() => {
+        idle = true;
+        emitTelemetry("idle.start", { reason: "no_interaction" });
+      }, 30_000);
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        if (!idle) {
+          idle = true;
+          emitTelemetry("idle.start", { reason: "tab_hidden" });
+        }
+      } else {
+        idle = false;
+        emitTelemetry("idle.end", { reason: "tab_visible" });
+        markActive();
+      }
+    };
+
+    markActive();
+    window.addEventListener("mousemove", markActive);
+    window.addEventListener("keydown", markActive);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      if (idleTimer) {
+        window.clearTimeout(idleTimer);
+      }
+      window.removeEventListener("mousemove", markActive);
+      window.removeEventListener("keydown", markActive);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [activeLesson?.topicId, emitTelemetry]);
+
+  useEffect(() => {
+    if (!activeLesson?.courseId) {
+      return;
+    }
+    const rounded = Math.round(courseProgress);
+    if (
+      lastProgressSnapshotRef.current === null ||
+      Math.abs(rounded - lastProgressSnapshotRef.current) >= 5 ||
+      rounded === 0 ||
+      rounded === 100
+    ) {
+      lastProgressSnapshotRef.current = rounded;
+      emitTelemetry("progress.snapshot", { percent: rounded });
+    }
+  }, [courseProgress, activeLesson?.courseId, emitTelemetry]);
 
   // Quiz timer
   useEffect(() => {
@@ -1109,6 +1280,28 @@ const CoursePlayerPage: React.FC = () => {
 
   const handleSubmoduleSelect = (sub: SubModule) => {
     if (!sub.unlocked) {
+      emitTelemetry("lesson.locked_click", {
+        moduleNo: sub.moduleNo,
+        reason: sub.lockedDueToCooldown ? "cooldown" : sub.lockedDueToQuiz ? "quiz" : "sequence",
+        topicPairIndex: sub.topicPairIndex,
+      });
+    } else {
+      if (sub.type === "quiz") {
+        emitTelemetry(
+          "lesson.quiz_select",
+          { moduleNo: sub.moduleNo, topicPairIndex: sub.topicPairIndex },
+          { moduleNo: sub.moduleNo, topicId: null },
+        );
+      } else if (sub.slug) {
+        const targetLesson = lessons.find((lesson) => lesson.slug === sub.slug);
+        emitTelemetry(
+          "lesson.navigate",
+          { moduleNo: sub.moduleNo, topicPairIndex: sub.topicPairIndex, slug: sub.slug },
+          { moduleNo: sub.moduleNo, topicId: targetLesson?.topicId ?? null, courseId: targetLesson?.courseId ?? null },
+        );
+      }
+    }
+    if (!sub.unlocked) {
       if (sub.lockedDueToCooldown) {
         const unlockLabel = formatUnlockDate(sub.cooldownUnlockAt);
         toast({
@@ -1147,6 +1340,7 @@ const CoursePlayerPage: React.FC = () => {
     if (!courseKey) return;
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (session?.accessToken) headers.Authorization = `Bearer ${session.accessToken}`;
+    emitTelemetry("quiz.start", { topicPairIndex }, { moduleNo, topicId: null });
     try {
       const res = await fetch(buildApiUrl(`/api/quiz/attempts`), {
         method: "POST",
@@ -1183,6 +1377,11 @@ const CoursePlayerPage: React.FC = () => {
     if (session?.accessToken) headers.Authorization = `Bearer ${session.accessToken}`;
     try {
       const payload = Object.entries(answers).map(([questionId, optionId]) => ({ questionId, optionId }));
+      emitTelemetry(
+        "quiz.submit",
+        { answered: payload.length, totalQuestions: quizQuestions.length },
+        { moduleNo: selectedSection?.moduleNo ?? activeLesson?.moduleNo ?? null },
+      );
       const res = await fetch(buildApiUrl(`/api/quiz/attempts/${quizAttemptId}/submit`), {
         method: "POST",
         credentials: "include",
@@ -1192,6 +1391,15 @@ const CoursePlayerPage: React.FC = () => {
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
       const base = data?.result ?? {};
+      emitTelemetry(
+        base.passed ? "quiz.pass" : "quiz.fail",
+        {
+          scorePercent: base.scorePercent,
+          correctCount: base.correctCount,
+          totalQuestions: base.totalQuestions,
+        },
+        { moduleNo: selectedSection?.moduleNo ?? activeLesson?.moduleNo ?? null },
+      );
       const progressModules: {
         moduleNo: number;
         unlocked?: boolean;
@@ -1253,6 +1461,11 @@ const CoursePlayerPage: React.FC = () => {
         toast({ variant: "destructive", title: "No course context", description: "Select a lesson before chatting." });
         return;
       }
+      const topicIdForChat = activeLesson?.topicId ?? null;
+      if (!topicIdForChat) {
+        toast({ variant: "destructive", title: "No topic context", description: "Open a lesson before chatting." });
+        return;
+      }
       const moduleNoForChat = activeLesson?.moduleNo ?? null;
       if (!suggestion && (moduleNoForChat === null || moduleNoForChat === undefined)) {
         toast({
@@ -1283,6 +1496,11 @@ const CoursePlayerPage: React.FC = () => {
         }
         return next;
       });
+      emitTelemetry(
+        suggestion ? "tutor.prompt_suggestion" : "tutor.prompt_typed",
+        { questionLength: question.length, suggestionId: suggestion?.id },
+        { moduleNo: moduleNoForChat, topicId: activeLesson?.topicId ?? null },
+      );
 
       let botMessageId: string | null = null;
       try {
@@ -1293,6 +1511,7 @@ const CoursePlayerPage: React.FC = () => {
           question,
           courseId: courseIdForChat,
           courseTitle: activeLesson?.moduleName ?? undefined,
+          topicId: topicIdForChat,
         };
         if (suggestion) {
           body.suggestionId = suggestion.id;
@@ -1318,6 +1537,9 @@ const CoursePlayerPage: React.FC = () => {
         botMessageId = botId;
         setStarterAnchorMessageId(botId);
         setChatMessages((prev) => [...prev, { id: botId, text: answer, isBot: true, suggestionContext: suggestion }]);
+        if (typeof payload?.sessionId === "string") {
+          setChatSessionId(payload.sessionId);
+        }
         const next = Array.isArray(payload?.nextSuggestions) ? payload.nextSuggestions : [];
         if (suggestion) {
           setInlineFollowUps((prev) => ({
@@ -1330,6 +1552,11 @@ const CoursePlayerPage: React.FC = () => {
             [botId]: next,
           }));
         }
+        emitTelemetry(
+          "tutor.response_received",
+          { suggestionId: suggestion?.id, followUps: next.length },
+          { moduleNo: moduleNoForChat, topicId: activeLesson?.topicId ?? null },
+        );
       } catch (error) {
         const raw = error instanceof Error ? error.message : "Tutor unavailable";
         const friendly = raw.toLowerCase().includes("internal server error")
@@ -1357,8 +1584,11 @@ const CoursePlayerPage: React.FC = () => {
       courseKey,
       activeLesson?.courseId,
       activeLesson?.moduleName,
+      activeLesson?.moduleNo,
+      activeLesson?.topicId,
       session?.accessToken,
       toast,
+      emitTelemetry,
     ],
   );
 
@@ -1647,6 +1877,10 @@ const CoursePlayerPage: React.FC = () => {
                     <p className="text-sm text-[#4a4845]">No study material for this lesson.</p>
                   )}
                 </div>
+
+                {formattedStudyText && activeLesson?.topicId && (
+                  <ColdCalling topicId={activeLesson.topicId} session={session} onTelemetryEvent={emitTelemetry} />
+                )}
 
                 {activePptEmbedUrl && activeLesson?.pptUrl && (
                   <div className="space-y-3">
