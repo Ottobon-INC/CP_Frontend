@@ -19,6 +19,7 @@ import {
   ArrowDown,
   Move,
   ChevronDown,
+  ClipboardList,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { buildApiUrl } from "@/lib/api";
@@ -27,6 +28,7 @@ import { recordTelemetryEvent, updateTelemetryAccessToken } from "@/utils/teleme
 import type { StoredSession } from "@/types/session";
 import SimulationExercise, { SimulationPayload } from "@/components/SimulationExercise";
 import ColdCalling from "@/components/ColdCalling";
+import CohortProjectModal, { type CohortProjectPayload } from "@/components/CohortProjectModal";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
@@ -37,6 +39,105 @@ const buildOfficeViewerUrl = (rawUrl?: string | null) => {
   const trimmed = rawUrl.trim();
   if (!trimmed) return null;
   return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(trimmed)}`;
+};
+
+const normalizeVideoUrl = (rawUrl?: string | null) => {
+  if (!rawUrl) return null;
+  const trimmed = rawUrl.trim();
+  if (!trimmed) return null;
+  try {
+    const parsed = new URL(trimmed);
+    const host = parsed.hostname.toLowerCase();
+
+    const toEmbed = (id: string | null) => (id ? `https://www.youtube.com/embed/${id}` : trimmed);
+
+    if (host.includes("youtube.com")) {
+      if (parsed.pathname.startsWith("/embed/")) {
+        return `https://www.youtube.com${parsed.pathname}`;
+      }
+      if (parsed.pathname === "/watch") {
+        return toEmbed(parsed.searchParams.get("v"));
+      }
+      if (parsed.pathname.startsWith("/shorts/")) {
+        return toEmbed(parsed.pathname.split("/").pop() ?? null);
+      }
+    }
+    if (host === "youtu.be") {
+      const id = parsed.pathname.replace(/^\/+/, "");
+      return toEmbed(id || null);
+    }
+
+    return trimmed;
+  } catch {
+    return trimmed;
+  }
+};
+
+type ContentBlock = {
+  id?: string;
+  type: "text" | "image" | "video" | "ppt";
+  data?: Record<string, unknown>;
+};
+
+type ContentBlockPayload = {
+  version?: string;
+  blocks: ContentBlock[];
+};
+
+const parseContentBlocks = (raw?: string | null): ContentBlockPayload | null => {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return null;
+    const blocksRaw = (parsed as Record<string, unknown>).blocks;
+    if (!Array.isArray(blocksRaw)) return null;
+    const blocks = blocksRaw
+      .map((entry) => {
+        if (!entry || typeof entry !== "object") return null;
+        const node = entry as Record<string, unknown>;
+        const rawType = typeof node.type === "string" ? node.type : "";
+        if (rawType !== "text" && rawType !== "image" && rawType !== "video" && rawType !== "ppt") return null;
+        return {
+          id: typeof node.id === "string" ? node.id : undefined,
+          type: rawType as ContentBlock["type"],
+          data: typeof node.data === "object" && node.data ? (node.data as Record<string, unknown>) : undefined,
+        } as ContentBlock;
+      })
+      .filter((block): block is ContentBlock => Boolean(block));
+    if (blocks.length === 0) return null;
+    const version = typeof (parsed as Record<string, unknown>).version === "string"
+      ? ((parsed as Record<string, unknown>).version as string)
+      : undefined;
+    return { version, blocks };
+  } catch {
+    return null;
+  }
+};
+
+const resolveTextVariant = (data: Record<string, unknown> | undefined, persona: StudyPersona) => {
+  if (!data) return "";
+  const variants = typeof data.variants === "object" && data.variants
+    ? (data.variants as Record<string, unknown>)
+    : null;
+  const preferred = variants && typeof variants[persona] === "string" ? (variants[persona] as string) : null;
+  const normal = variants && typeof variants.normal === "string" ? (variants.normal as string) : null;
+  const content = typeof data.content === "string" ? data.content : "";
+  return (preferred || normal || content).trim();
+};
+
+const parseCohortProjectPayload = (value: unknown): CohortProjectPayload | null => {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+  const record = value as Record<string, unknown>;
+  const title = typeof record.title === "string" ? record.title.trim() : "";
+  const tagline = typeof record.tagline === "string" ? record.tagline.trim() : "";
+  const description = typeof record.description === "string" ? record.description.trim() : "";
+  if (!title || !tagline || !description) {
+    return null;
+  }
+  const notes = typeof record.notes === "string" ? record.notes.trim() : null;
+  return { title, tagline, description, notes };
 };
 
 type ContentType = "video" | "quiz";
@@ -429,6 +530,11 @@ const CoursePlayerPage: React.FC = () => {
   const [surveyComplete, setSurveyComplete] = useState(false);
   const [recommendedPersona, setRecommendedPersona] = useState<StudyPersona | null>(null);
   const [forceSurvey, setForceSurvey] = useState(false);
+  const [cohortProjectOpen, setCohortProjectOpen] = useState(false);
+  const [cohortProject, setCohortProject] = useState<CohortProjectPayload | null>(null);
+  const [cohortProjectBatch, setCohortProjectBatch] = useState<number | null>(null);
+  const [cohortProjectLoading, setCohortProjectLoading] = useState(false);
+  const [cohortProjectError, setCohortProjectError] = useState<string | null>(null);
   useEffect(() => {
     if (typeof window === "undefined") {
       return;
@@ -563,6 +669,7 @@ const CoursePlayerPage: React.FC = () => {
   }, [personaHistoryKey]);
 
   const chatListRef = useRef<HTMLDivElement | null>(null);
+  const contentScrollRef = useRef<HTMLDivElement | null>(null);
   useLayoutEffect(() => {
     const container = chatListRef.current;
     if (!container) {
@@ -694,7 +801,14 @@ const CoursePlayerPage: React.FC = () => {
   const fetchTopics = useCallback(async () => {
     if (!courseKey) return;
     try {
-      const res = await fetch(buildApiUrl(`/api/lessons/courses/${courseKey}/topics`), { credentials: "include" });
+      const headers: HeadersInit = {};
+      if (session?.accessToken) {
+        headers.Authorization = `Bearer ${session.accessToken}`;
+      }
+      const res = await fetch(buildApiUrl(`/api/lessons/courses/${courseKey}/topics`), {
+        credentials: "include",
+        headers,
+      });
       if (!res.ok) throw new Error("Failed to load topics");
       const data = await res.json();
       const mapped: Lesson[] = (data.topics ?? []).map((t: any) => ({
@@ -855,6 +969,56 @@ const CoursePlayerPage: React.FC = () => {
       console.error("Failed to load quiz sections", error);
     }
   }, [courseKey, session?.accessToken]);
+
+  const fetchCohortProject = useCallback(async () => {
+    if (!courseKey || !session?.accessToken) {
+      setCohortProject(null);
+      setCohortProjectBatch(null);
+      setCohortProjectError("Sign in to view cohort project details.");
+      return;
+    }
+
+    setCohortProjectLoading(true);
+    setCohortProjectError(null);
+    try {
+      const res = await fetch(buildApiUrl(`/api/cohort-projects/${courseKey}`), {
+        credentials: "include",
+        headers: { Authorization: `Bearer ${session.accessToken}` },
+      });
+      if (!res.ok) {
+        const payload = await res.json().catch(() => null);
+        const message =
+          typeof payload?.message === "string" ? payload.message : "Unable to load cohort project.";
+        setCohortProject(null);
+        setCohortProjectBatch(null);
+        setCohortProjectError(message);
+        return;
+      }
+
+      const data = await res.json();
+      const parsed = parseCohortProjectPayload(data?.project);
+      setCohortProject(parsed);
+      setCohortProjectBatch(typeof data?.batchNo === "number" ? data.batchNo : null);
+      if (!parsed) {
+        setCohortProjectError("Project details are incomplete.");
+      }
+    } catch (error) {
+      setCohortProject(null);
+      setCohortProjectBatch(null);
+      setCohortProjectError(error instanceof Error ? error.message : "Unable to load cohort project.");
+    } finally {
+      setCohortProjectLoading(false);
+    }
+  }, [courseKey, session?.accessToken]);
+
+  const handleOpenCohortProject = useCallback(() => {
+    setCohortProjectOpen(true);
+    void fetchCohortProject();
+  }, [fetchCohortProject]);
+
+  const handleCloseCohortProject = useCallback(() => {
+    setCohortProjectOpen(false);
+  }, []);
 
   const fetchProgress = useCallback(async () => {
     // courseProgress derived from sections
@@ -1611,6 +1775,257 @@ const CoursePlayerPage: React.FC = () => {
     }
     return normalizeStudyMarkdown(DEFAULT_STUDY_FALLBACK);
   }, [activeStudyText]);
+  const contentBlocks = useMemo(() => parseContentBlocks(activeLesson?.textContent), [activeLesson?.textContent]);
+  const hasBlockLayout = Boolean(contentBlocks?.blocks?.length);
+  const firstBlockIsVideo = hasBlockLayout && contentBlocks?.blocks?.[0]?.type === "video";
+  const firstTextBlockIndex = useMemo(() => {
+    if (!contentBlocks?.blocks) return null;
+    const index = contentBlocks.blocks.findIndex((block) => block.type === "text");
+    return index >= 0 ? index : null;
+  }, [contentBlocks?.blocks]);
+  const hasStudyContent = hasBlockLayout ? Boolean(contentBlocks?.blocks?.length) : Boolean(formattedStudyText);
+  const blockVideoMaxHeightClass = isCompactLayout ? "max-h-[40vh]" : "max-h-[65vh]";
+  const scrollMainToTop = useCallback((behavior: ScrollBehavior = "smooth") => {
+    const container = contentScrollRef.current;
+    if (container) {
+      container.scrollTo({ top: 0, behavior });
+      return;
+    }
+    window.scrollTo({ top: 0, behavior });
+  }, []);
+  const handleToggleReadMode = useCallback(() => {
+    setIsReadingMode((prev) => {
+      const next = !prev;
+      if (next) {
+        scrollMainToTop("smooth");
+      }
+      return next;
+    });
+  }, [scrollMainToTop]);
+  const renderStudyHeader = useCallback(
+    () => (
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b-2 border-[#4a4845]/20 pb-4">
+        <div className="flex items-start gap-3 text-left">
+          <div className="p-2 bg-[#000000] text-[#f8f1e6] rounded-lg flex-shrink-0">
+            <Book size={24} />
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-2xl font-bold text-[#000000]">Study Material</h3>
+            <p className="text-sm text-[#4a4845]">
+              Companion reading for {activeLesson?.topicName ?? ""}
+            </p>
+            {personaReady && (
+              <button
+                type="button"
+                onClick={handleOpenPersonaModal}
+                className="inline-flex items-center gap-1 text-xs font-semibold text-[#bf2f1f] hover:underline"
+              >
+                {studyPersona === "normal"
+                  ? "Personalize this text"
+                  : `${personaOptions[studyPersona].label} style - Change`}
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+          <button
+            onClick={handleToggleReadMode}
+            className={`flex w-full sm:w-auto items-center justify-center gap-2 px-4 py-2 rounded-lg border-2 font-bold text-sm transition ${isReadingMode
+              ? "bg-[#bf2f1f] text-white border-[#bf2f1f] hover:bg-[#a62619]"
+              : "bg-white text-[#000000] border-[#000000] hover:bg-[#4a4845]/10"
+              }`}
+          >
+            {isReadingMode ? (
+              <>
+                <ArrowUpLeftFromCircle size={16} /> Restore Video
+              </>
+            ) : (
+              <>
+                <BookOpen size={16} /> Read Mode
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    ),
+    [activeLesson?.topicName, handleOpenPersonaModal, handleToggleReadMode, isReadingMode, personaReady, studyPersona],
+  );
+  const renderContentBlocks = useCallback(
+    (blocks: ContentBlock[], variant: "main" | "widget") => {
+      const output: React.ReactNode[] = [];
+      let headerInserted = false;
+
+      const buildImageNode = (imageBlock: ContentBlock, nodeKey: string) => {
+        const imageData = imageBlock.data;
+        const url = typeof imageData?.url === "string" ? imageData.url.trim() : "";
+        if (!url) return null;
+        const alt =
+          typeof imageData?.alt === "string" && imageData.alt.trim() ? imageData.alt.trim() : "Lesson visual";
+        const caption =
+          typeof imageData?.caption === "string" && imageData.caption.trim() ? imageData.caption.trim() : "";
+        return (
+          <figure key={nodeKey} className="rounded-3xl border border-[#e8e1d8] bg-white overflow-hidden shadow-sm">
+            <img src={url} alt={alt} className="w-full object-cover" loading="lazy" />
+            {caption && (
+              <figcaption className="px-5 py-3 text-xs text-[#4a4845] bg-[#f8f1e6]/60 border-t border-[#f2ebe0]">
+                {caption}
+              </figcaption>
+            )}
+          </figure>
+        );
+      };
+
+      for (let index = 0; index < blocks.length; index += 1) {
+        const block = blocks[index];
+        const key = block.id ?? `${block.type}-${index}`;
+        const data = block.data;
+
+        if (block.type === "text") {
+          const content = resolveTextVariant(data, studyPersona);
+          if (!content) {
+            continue;
+          }
+          const isFirstTextBlock = firstTextBlockIndex !== null && index === firstTextBlockIndex;
+          if (variant === "main" && !headerInserted) {
+            output.push(<div key={`study-header-${key}`}>{renderStudyHeader()}</div>);
+            headerInserted = true;
+          }
+
+          const containerClass =
+            variant === "main"
+              ? "rounded-3xl border border-[#e8e1d8] bg-white shadow-[0_20px_60px_rgba(0,0,0,0.08)]"
+              : "rounded-2xl border border-[#000000]/10 bg-white shadow-sm";
+          const paddingClass = variant === "main" ? "p-6 sm:p-8" : "p-4";
+
+          let attachedImage: React.ReactNode | null = null;
+          if (variant === "main" && isFirstTextBlock) {
+            const nextBlock = blocks[index + 1];
+            if (nextBlock?.type === "image") {
+              attachedImage = buildImageNode(nextBlock, `${key}-attached-image`);
+              if (attachedImage) {
+                index += 1;
+              }
+            }
+          }
+
+          output.push(
+            <div
+              key={key}
+              id={isFirstTextBlock ? "study-text-start" : undefined}
+              className={containerClass}
+            >
+              <div className={`${paddingClass} prose prose-base max-w-none text-[#1e293b]`}>
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  rehypePlugins={[rehypeSanitize]}
+                  components={studyMarkdownComponents}
+                >
+                  {content}
+                </ReactMarkdown>
+              </div>
+              {attachedImage && <div className="px-6 pb-6">{attachedImage}</div>}
+            </div>,
+          );
+          continue;
+        }
+
+        if (block.type === "image") {
+          const imageNode = buildImageNode(block, key);
+          if (imageNode) {
+            output.push(imageNode);
+          }
+          continue;
+        }
+
+        if (block.type === "video") {
+          const rawUrl = typeof data?.url === "string" ? data.url : "";
+          const videoUrl = normalizeVideoUrl(rawUrl);
+          if (!videoUrl) {
+            continue;
+          }
+          const title =
+            typeof data?.title === "string" && data.title.trim()
+              ? data.title.trim()
+              : activeLesson?.topicName ?? "Lesson video";
+          const videoWrapperClass = `transition-[max-height,opacity] duration-300 ease-in-out overflow-hidden ${isReadingMode
+            ? "max-h-0 opacity-0 pointer-events-none"
+            : `${blockVideoMaxHeightClass} opacity-100`
+            }`;
+          output.push(
+            <div key={key} className={videoWrapperClass} style={isReadingMode ? { marginTop: 0 } : undefined}>
+              <div className="space-y-2">
+                <div className="rounded-3xl border border-[#e8e1d8] bg-white shadow-sm overflow-hidden">
+                  <div className="w-full bg-black aspect-video">
+                    <iframe
+                      className="w-full h-full"
+                      src={videoUrl}
+                      title={title}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  </div>
+                </div>
+                {variant === "main" && firstBlockIsVideo && firstTextBlockIndex !== null && index === 0 && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      document.getElementById("study-text-start")?.scrollIntoView({ behavior: "smooth", block: "start" })
+                    }
+                    className="text-xs font-semibold text-[#bf2f1f] hover:underline"
+                  >
+                    Skip to reading
+                  </button>
+                )}
+              </div>
+            </div>,
+          );
+          continue;
+        }
+
+        if (block.type === "ppt") {
+          const rawUrl = typeof data?.url === "string" ? data.url : "";
+          const pptUrl = buildOfficeViewerUrl(rawUrl);
+          if (!pptUrl) {
+            continue;
+          }
+          const title =
+            typeof data?.title === "string" && data.title.trim()
+              ? data.title.trim()
+              : "Slides Viewer";
+          output.push(
+            <div key={key} className="rounded-2xl border border-[#e8e1d8] bg-white shadow-sm overflow-hidden">
+              <div className="flex items-center gap-2 px-4 py-2 border-b border-[#f4ece3] text-[#1E3A47] font-semibold">
+                <FileText size={16} className="text-[#bf2f1f]" />
+                <span>{title}</span>
+              </div>
+              <div className="w-full bg-[#000000]/5 h-[260px] sm:h-[360px] lg:h-[500px] rounded-b-2xl overflow-hidden">
+                <iframe
+                  title={title}
+                  src={pptUrl}
+                  className="w-full h-full border-0"
+                  referrerPolicy="no-referrer"
+                  allowFullScreen
+                  loading="lazy"
+                />
+              </div>
+            </div>,
+          );
+        }
+      }
+
+      return output;
+    },
+    [
+      activeLesson?.topicName,
+      blockVideoMaxHeightClass,
+      firstBlockIsVideo,
+      firstTextBlockIndex,
+      isReadingMode,
+      renderStudyHeader,
+      studyPersona,
+    ],
+  );
   const activeVideoUrl = activeLesson?.videoUrl ?? "";
   const rootClassName = `${isCompactLayout ? "flex flex-col" : "flex"} h-screen bg-[#000000] text-[#f8f1e6] overflow-hidden font-sans relative`;
   const videoHeightClass = isCompactLayout ? "w-full h-[40vh]" : "w-full h-[65vh]";
@@ -1780,12 +2195,23 @@ const CoursePlayerPage: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center gap-2 text-xs md:text-sm text-[#f8f1e6]/70">
-            Progress {Math.round(courseProgress)}%
+            <button
+              type="button"
+              onClick={handleOpenCohortProject}
+              className="inline-flex items-center gap-2 rounded-full border border-[#4a4845]/60 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#f8f1e6]/80 transition hover:border-[#f8f1e6]/60 hover:bg-white/5 hover:text-white"
+            >
+              <ClipboardList size={14} />
+              Cohort Project
+            </button>
+            <span>Progress {Math.round(courseProgress)}%</span>
           </div>
         </div>
-        <div className={`${isFullScreen ? "flex-1 overflow-hidden" : "flex-1 overflow-y-auto"} relative`}>
+        <div
+          ref={contentScrollRef}
+          className={`${isFullScreen ? "flex-1 overflow-hidden" : "flex-1 overflow-y-auto"} relative`}
+        >
           {/* Video */}
-          {!isQuizMode && (
+          {!isQuizMode && !hasBlockLayout && (
             <div
               className={`relative bg-black transition-all duration-300 shrink-0 flex justify-center items-center ${isFullScreen ? "flex-1 h-full" : isReadingMode ? "h-0 overflow-hidden" : videoHeightClass
                 }`}
@@ -1815,53 +2241,12 @@ const CoursePlayerPage: React.FC = () => {
           {!isFullScreen && !isQuizMode && (
             <div className="bg-[#f8f1e6] border-t-4 border-[#000000] w-full text-[#000000]">
               <div className={`w-full ${studySectionPadding} space-y-8`}>
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b-2 border-[#4a4845]/20 pb-4">
-                  <div className="flex items-start gap-3 text-left">
-                    <div className="p-2 bg-[#000000] text-[#f8f1e6] rounded-lg flex-shrink-0">
-                      <Book size={24} />
-                    </div>
-                    <div className="space-y-1">
-                      <h3 className="text-2xl font-bold text-[#000000]">Study Material</h3>
-                      <p className="text-sm text-[#4a4845]">
-                        Companion reading for {activeLesson?.topicName ?? ""}
-                      </p>
-                      {personaReady && (
-                        <button
-                          type="button"
-                          onClick={handleOpenPersonaModal}
-                          className="inline-flex items-center gap-1 text-xs font-semibold text-[#bf2f1f] hover:underline"
-                        >
-                          {studyPersona === "normal"
-                            ? "Personalize this text"
-                            : `${personaOptions[studyPersona].label} style - Change`}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
-                    <button
-                      onClick={() => setIsReadingMode(!isReadingMode)}
-                      className={`flex w-full sm:w-auto items-center justify-center gap-2 px-4 py-2 rounded-lg border-2 font-bold text-sm transition ${isReadingMode
-                        ? "bg-[#bf2f1f] text-white border-[#bf2f1f] hover:bg-[#a62619]"
-                        : "bg-white text-[#000000] border-[#000000] hover:bg-[#4a4845]/10"
-                        }`}
-                    >
-                      {isReadingMode ? (
-                        <>
-                          <ArrowUpLeftFromCircle size={16} /> Restore Video
-                        </>
-                      ) : (
-                        <>
-                          <BookOpen size={16} /> Read Mode
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
+                {!hasBlockLayout && renderStudyHeader()}
 
                 <div className="space-y-4 text-left">
-                  {formattedStudyText ? (
+                  {hasBlockLayout && contentBlocks ? (
+                    <div className="space-y-6">{renderContentBlocks(contentBlocks.blocks, "main")}</div>
+                  ) : formattedStudyText ? (
                     <div className="rounded-3xl border border-[#e8e1d8] bg-white shadow-[0_20px_60px_rgba(0,0,0,0.08)]">
                       <div className="p-6 sm:p-8 prose prose-base max-w-none text-[#1e293b]">
                         <ReactMarkdown
@@ -1878,11 +2263,11 @@ const CoursePlayerPage: React.FC = () => {
                   )}
                 </div>
 
-                {formattedStudyText && activeLesson?.topicId && (
+                {hasStudyContent && activeLesson?.topicId && (
                   <ColdCalling topicId={activeLesson.topicId} session={session} onTelemetryEvent={emitTelemetry} />
                 )}
 
-                {activePptEmbedUrl && activeLesson?.pptUrl && (
+                {!hasBlockLayout && activePptEmbedUrl && activeLesson?.pptUrl && (
                   <div className="space-y-3">
                     <div className="rounded-2xl border border-[#e8e1d8] bg-white shadow-sm overflow-hidden">
                       <div className="flex items-center gap-2 px-4 py-2 border-b border-[#f4ece3] text-[#1E3A47] font-semibold">
@@ -2198,17 +2583,24 @@ const CoursePlayerPage: React.FC = () => {
             </div>
           </div>
           <div className="flex-1 overflow-y-auto p-6 bg-[#f8f1e6] text-[#000000]">
-            {activeStudyText
-              ? activeStudyText.split("\n").map((line, i) => {
-                if (line.startsWith("## ")) return <h2 key={i} className="text-2xl font-bold mt-8 mb-4 text-[#bf2f1f] border-l-4 border-[#bf2f1f] pl-3">{line.replace("## ", "")}</h2>;
-                if (line.startsWith("### ")) return <h3 key={i} className="text-xl font-bold mt-6 mb-3 text-current">{line.replace("### ", "")}</h3>;
-                if (line.startsWith("* ")) return <li key={i} className="ml-6 list-disc opacity-80 mb-1">{line.replace("* ", "")}</li>;
-                if (line.startsWith("1. ")) return <li key={i} className="ml-6 list-decimal opacity-80 mb-1 font-bold">{line.replace("1. ", "")}</li>;
-                if (line.trim() === "") return <div key={i} className="h-2"></div>;
-                return <p key={i} className="mb-3 leading-relaxed opacity-90 text-lg">{line}</p>;
-              })
-              : <p className="text-sm text-[#4a4845]">No study material for this lesson.</p>}
-            {activePptEmbedUrl && activeLesson?.pptUrl && (
+            {hasBlockLayout && contentBlocks ? (
+              <div className="space-y-4">{renderContentBlocks(contentBlocks.blocks, "widget")}</div>
+            ) : formattedStudyText ? (
+              <div className="rounded-2xl border border-[#000000]/10 bg-white shadow-sm">
+                <div className="p-4 prose prose-sm max-w-none text-[#1e293b]">
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    rehypePlugins={[rehypeSanitize]}
+                    components={studyMarkdownComponents}
+                  >
+                    {formattedStudyText}
+                  </ReactMarkdown>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-[#4a4845]">No study material for this lesson.</p>
+            )}
+            {!hasBlockLayout && activePptEmbedUrl && activeLesson?.pptUrl && (
               <div className="mt-6 space-y-2">
                 <div className="rounded-xl border-2 border-[#000000] bg-white overflow-hidden">
                   <div className="flex items-center gap-2 px-3 py-2 border-b border-[#000000]/10 text-sm font-semibold">
@@ -2247,6 +2639,15 @@ const CoursePlayerPage: React.FC = () => {
       >
         {chatOpen ? <X size={24} /> : <MessageSquare size={24} />}
       </button>
+
+      <CohortProjectModal
+        isOpen={cohortProjectOpen}
+        project={cohortProject}
+        batchNo={cohortProjectBatch}
+        isLoading={cohortProjectLoading}
+        error={cohortProjectError}
+        onClose={handleCloseCohortProject}
+      />
 
       {showPersonaModal && (
         <div className="fixed inset-0 z-[70] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
