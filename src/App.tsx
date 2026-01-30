@@ -49,7 +49,7 @@ function Router() {
       <Route path="/auth/callback" component={AuthCallbackPage} />
       <Route path="/tutors" component={TutorDashboardPage} />
 
-      {/* Default route goes to dashboard */}
+      {/* Default route goes to the dashboard */}
       <Route path="/" component={LandingPage} />
 
       {/* Fallback to 404 */}
