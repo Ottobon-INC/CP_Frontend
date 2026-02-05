@@ -1,4 +1,5 @@
 import { Switch, Route, useLocation } from "wouter";
+import { buildApiUrl } from "@/lib/api";
 import { useEffect, useRef, useState } from "react";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -23,6 +24,8 @@ import TutorDashboardPage from "@/pages/TutorDashboardPage";
 import CohortPage from "@/pages/CohortPage";
 import OnDemandPage from "@/pages/OnDemandPage";
 import WorkshopPage from "@/pages/WorkshopPage";
+import StudentDashboardPage from "@/pages/Strudent_Dashboard";
+import RegistrationPage from "@/pages/RegistrationPage";
 
 import MethodologyPage from "@/pages/MethodologyPage";
 import MoreInfoPage from "@/pages/MoreInfoPage";
@@ -37,6 +40,13 @@ function Router() {
       <Route path="/our-courses/on-demand" component={OnDemandPage} />
       <Route path="/our-courses/workshops" component={WorkshopPage} />
 
+      {/* Registration Routes - URL-driven multi-stage flow */}
+      <Route path="/registration" component={RegistrationPage} />
+      <Route path="/registration/:programType" component={RegistrationPage} />
+      <Route path="/registration/:programType/:courseSlug" component={RegistrationPage} />
+      <Route path="/registration/:programType/:courseSlug/assessment" component={RegistrationPage} />
+      <Route path="/registration/:programType/:courseSlug/success" component={RegistrationPage} />
+
       {/* Course Routes */}
       <Route path="/course/:id/assessment" component={AssessmentPage} />
       <Route path="/course/:id/enroll" component={EnrollmentPage} />
@@ -46,10 +56,11 @@ function Router() {
       <Route path="/course/:id/congrats/feedback" component={CongratsFeedbackPage} />
       <Route path="/course/:id/congrats" component={CongratsPage} />
       <Route path="/course/:id" component={CourseDetailsPage} />
+      <Route path="/student-dashboard" component={StudentDashboardPage} />
       <Route path="/auth/callback" component={AuthCallbackPage} />
       <Route path="/tutors" component={TutorDashboardPage} />
 
-      {/* Default route goes to the dashboard */}
+      {/* Default route goes to dashboard */}
       <Route path="/" component={LandingPage} />
 
       {/* Fallback to 404 */}
@@ -63,7 +74,11 @@ function App({ isAuthenticated, user, setIsAuthenticated, setUser }: any) {
   const [location] = useLocation();
   const hadSessionRef = useRef(false);
   const logoutTriggeredRef = useRef(false);
-  const shouldHideNavbar = location === "/course" || location.startsWith("/course/");
+  const shouldHideNavbar =
+    location === "/course" ||
+    location.startsWith("/course/") ||
+    location.startsWith("/registration") ||
+    location === "/student-dashboard";
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -118,9 +133,8 @@ function App({ isAuthenticated, user, setIsAuthenticated, setUser }: any) {
             onLogin={() => {
               const homeRedirect = '/';
               sessionStorage.setItem("postLoginRedirect", homeRedirect);
-              // Ideally use buildApiUrl from client, but keeping simple:
-              const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-              const target = `${API_URL}/auth/google?redirect=${encodeURIComponent(homeRedirect)}`;
+              // Use buildApiUrl to ensure we target the correct backend port (4000)
+              const target = `${buildApiUrl('/auth/google')}?redirect=${encodeURIComponent(homeRedirect)}`;
               window.location.href = target;
             }}
             onApplyTutor={() => window.location.href = '/become-a-tutor'}

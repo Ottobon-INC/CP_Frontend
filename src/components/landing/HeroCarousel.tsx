@@ -238,8 +238,22 @@ const HeroSlide: React.FC<{ onEnroll: () => void; onSearch: (term: string) => vo
 
 // --- Slide 2 Components (Cohort Promo) ---
 
-const PromoSlide: React.FC<{ onEnroll: () => void }> = ({ onEnroll }) => {
+const PromoSlide: React.FC<{
+    onEnroll: () => void;
+    onOverlayChange: (open: boolean) => void;
+    onHoverPauseChange: (paused: boolean) => void;
+}> = ({ onEnroll, onOverlayChange, onHoverPauseChange }) => {
     const [isSyllabusOpen, setIsSyllabusOpen] = useState(false);
+
+    const openSyllabus = () => {
+        setIsSyllabusOpen(true);
+        onOverlayChange(true);
+    };
+
+    const closeSyllabus = () => {
+        setIsSyllabusOpen(false);
+        onOverlayChange(false);
+    };
 
     return (
         <div className="w-full h-full min-h-screen flex items-center justify-center bg-[#FBE9D0]/30 py-20 pt-28">
@@ -350,6 +364,8 @@ const PromoSlide: React.FC<{ onEnroll: () => void }> = ({ onEnroll }) => {
         target="_blank"
         rel="noopener noreferrer"
         className="w-full sm:w-auto"
+        onMouseEnter={() => onHoverPauseChange(true)}
+        onMouseLeave={() => onHoverPauseChange(false)}
     >
         <button className="w-full bg-retro-teal text-white px-8 py-4 rounded-xl font-bold text-lg shadow-xl shadow-retro-teal/20 hover:bg-[#1a3540] hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 uppercase tracking-wide text-center">
             grab your spot
@@ -359,8 +375,10 @@ const PromoSlide: React.FC<{ onEnroll: () => void }> = ({ onEnroll }) => {
 
     {/* 3. View Full Syllabus Button */}
     <button
-        onClick={() => setIsSyllabusOpen(true)}
+        onClick={openSyllabus}
         className="group inline-flex w-full justify-center sm:w-auto items-center gap-3 rounded-xl border-2 border-retro-teal/40 bg-white px-6 py-4 font-semibold text-retro-teal shadow-sm transition-all hover:border-retro-teal hover:shadow-md"
+        onMouseEnter={() => onHoverPauseChange(true)}
+        onMouseLeave={() => onHoverPauseChange(false)}
     >
         View Full Syllabus
         <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
@@ -372,6 +390,8 @@ const PromoSlide: React.FC<{ onEnroll: () => void }> = ({ onEnroll }) => {
         whileHover={{ scale: 1.05, boxShadow: "0px 10px 20px rgba(230, 72, 51, 0.2)" }}
         whileTap={{ scale: 0.95 }}
         className="bg-retro-salmon hover:bg-retro-brown text-white px-8 py-4 rounded-xl font-semibold text-lg flex items-center justify-center gap-2 transition-all w-full sm:w-auto"
+        onMouseEnter={() => onHoverPauseChange(true)}
+        onMouseLeave={() => onHoverPauseChange(false)}
     >
         Enroll <ChevronRight size={20} />
     </motion.button>
@@ -401,7 +421,7 @@ const PromoSlide: React.FC<{ onEnroll: () => void }> = ({ onEnroll }) => {
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
-                        onClick={() => setIsSyllabusOpen(false)}
+                        onClick={closeSyllabus}
                     >
                         <motion.div
                             initial={{ scale: 0.9, opacity: 0 }}
@@ -411,7 +431,7 @@ const PromoSlide: React.FC<{ onEnroll: () => void }> = ({ onEnroll }) => {
                             onClick={(e) => e.stopPropagation()}
                         >
                             <button
-                                onClick={() => setIsSyllabusOpen(false)}
+                                onClick={closeSyllabus}
                                 className="absolute top-4 right-4 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-colors z-10"
                             >
                                 <X size={24} />
@@ -460,15 +480,20 @@ interface HeroCarouselProps {
 
 const HeroCarousel: React.FC<HeroCarouselProps> = ({ onEnroll, onSearch }) => {
     const [currentSlide, setCurrentSlide] = useState(0);
+    const [isAutoplayPaused, setIsAutoplayPaused] = useState(false);
+    const [isHoverPaused, setIsHoverPaused] = useState(false);
     const totalSlides = 2;
 
     // Auto-play
     useEffect(() => {
+        if (isAutoplayPaused || isHoverPaused) {
+            return undefined;
+        }
         const interval = setInterval(() => {
             setCurrentSlide((prev) => (prev + 1) % totalSlides);
         }, 5000);
         return () => clearInterval(interval);
-    }, []);
+    }, [isAutoplayPaused, isHoverPaused, totalSlides]);
 
     const nextSlide = () => {
         setCurrentSlide((prev) => (prev + 1) % totalSlides);
@@ -492,7 +517,13 @@ const HeroCarousel: React.FC<HeroCarouselProps> = ({ onEnroll, onSearch }) => {
                     className="w-full h-full"
                 >
                     {currentSlide === 0 && <HeroSlide onEnroll={onEnroll} onSearch={onSearch} />}
-                    {currentSlide === 1 && <PromoSlide onEnroll={onEnroll} />}
+                    {currentSlide === 1 && (
+                        <PromoSlide
+                            onEnroll={onEnroll}
+                            onOverlayChange={setIsAutoplayPaused}
+                            onHoverPauseChange={setIsHoverPaused}
+                        />
+                    )}
                 </motion.div>
             </AnimatePresence>
 
