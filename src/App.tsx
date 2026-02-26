@@ -15,12 +15,11 @@ import CoursePlayerPage from "@/pages/CoursePlayerPage";
 import CongratsPage from "@/pages/CongratsPage";
 import CongratsFeedbackPage from "@/pages/CongratsFeedbackPage";
 import CourseCertificatePage from "@/pages/CourseCertificatePage";
-import LearningPathPage from "@/pages/LearningPathPage";
 import LandingPage from "@/pages/LandingPage";
 import AuthCallbackPage from "@/pages/AuthCallbackPage";
 import BecomeTutorPage from "@/pages/BecomeTutorPage";
 import CourseDetailsPage from "@/pages/CourseDetailsPage";
-import TutorDashboardPage from "@/pages/TutorDashboardPage";
+
 import CohortPage from "@/pages/CohortPage";
 import OnDemandPage from "@/pages/OnDemandPage";
 import WorkshopPage from "@/pages/WorkshopPage";
@@ -50,7 +49,6 @@ function Router() {
       {/* Course Routes */}
       <Route path="/course/:id/assessment" component={AssessmentPage} />
       <Route path="/course/:id/enroll" component={EnrollmentPage} />
-      <Route path="/course/:id/path" component={LearningPathPage} />
       <Route path="/course/:id/learn/:lesson" component={CoursePlayerPage} />
       <Route path="/course/:id/congrats/certificate" component={CourseCertificatePage} />
       <Route path="/course/:id/congrats/feedback" component={CongratsFeedbackPage} />
@@ -58,7 +56,7 @@ function Router() {
       <Route path="/course/:id" component={CourseDetailsPage} />
       <Route path="/student-dashboard" component={StudentDashboardPage} />
       <Route path="/auth/callback" component={AuthCallbackPage} />
-      <Route path="/tutors" component={TutorDashboardPage} />
+
 
       {/* Default route goes to dashboard */}
       <Route path="/" component={LandingPage} />
@@ -131,7 +129,7 @@ function App({ isAuthenticated, user, setIsAuthenticated, setUser }: any) {
         {!shouldHideNavbar && (
           <Navbar
             onLogin={() => {
-              const homeRedirect = '/';
+              const homeRedirect = '/student-dashboard';
               sessionStorage.setItem("postLoginRedirect", homeRedirect);
               // Use buildApiUrl to ensure we target the correct backend port (4000)
               const target = `${buildApiUrl('/auth/google')}?redirect=${encodeURIComponent(homeRedirect)}`;
