@@ -257,6 +257,87 @@ const slugify = (text: string) =>
     .replace(/[^\w\s-]/g, "")
     .replace(/\s+/g, "-");
 
+const normalizeSlugValue = (value: string | null | undefined) =>
+  value?.toLowerCase().trim().replace(/\s+/g, "-") ?? "";
+
+const RESUME_PLACEHOLDER_SLUGS = new Set(["start", "resume", "continue"]);
+const RESUME_CACHE_PREFIX = "cp:last-opened:v1";
+
+type LocalResumeCacheEntry = {
+  topicId: string;
+  slug: string;
+  moduleNo: number;
+  topicNumber: number;
+  updatedAt: string;
+};
+
+const buildResumeStorageKey = (userScope: string, courseKey: string) =>
+  `${RESUME_CACHE_PREFIX}:${userScope.toLowerCase().trim()}:${courseKey.toLowerCase().trim()}`;
+
+const buildCourseResumeFallbackKey = (courseKey: string) =>
+  `${RESUME_CACHE_PREFIX}:course:${courseKey.toLowerCase().trim()}`;
+
+const readResumeCache = (userScope: string | null, courseKey: string): LocalResumeCacheEntry | null => {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  const keys = [
+    ...(userScope ? [buildResumeStorageKey(userScope, courseKey)] : []),
+    buildCourseResumeFallbackKey(courseKey),
+  ];
+  try {
+    for (const key of keys) {
+      const raw = localStorage.getItem(key);
+      if (!raw) {
+        continue;
+      }
+      const parsed = JSON.parse(raw) as Partial<LocalResumeCacheEntry>;
+      if (
+        typeof parsed?.topicId !== "string" ||
+        typeof parsed?.slug !== "string" ||
+        typeof parsed?.moduleNo !== "number" ||
+        typeof parsed?.topicNumber !== "number" ||
+        typeof parsed?.updatedAt !== "string"
+      ) {
+        continue;
+      }
+      return {
+        topicId: parsed.topicId,
+        slug: parsed.slug,
+        moduleNo: parsed.moduleNo,
+        topicNumber: parsed.topicNumber,
+        updatedAt: parsed.updatedAt,
+      };
+    }
+    return null;
+  } catch (error) {
+    console.error("Unable to read lesson resume cache", error);
+    return null;
+  }
+};
+
+const writeResumeCache = (
+  userScope: string | null,
+  courseKey: string,
+  entry: Omit<LocalResumeCacheEntry, "updatedAt">,
+) => {
+  if (typeof window === "undefined") {
+    return;
+  }
+  try {
+    const payload = JSON.stringify({
+      ...entry,
+      updatedAt: new Date().toISOString(),
+    });
+    if (userScope) {
+      localStorage.setItem(buildResumeStorageKey(userScope, courseKey), payload);
+    }
+    localStorage.setItem(buildCourseResumeFallbackKey(courseKey), payload);
+  } catch (error) {
+    console.error("Unable to write lesson resume cache", error);
+  }
+};
+
 const buildTopicGreeting = (lesson?: Lesson | null) => {
   if (!lesson) {
     return "Hi! Ask anything about this course.";
@@ -367,10 +448,13 @@ const CoursePlayerPage: React.FC = () => {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [session, setSession] = useState<StoredSession | null>(null);
+  const [sessionHydrated, setSessionHydrated] = useState(false);
 
   const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [topicsLoaded, setTopicsLoaded] = useState(false);
   const [modules, setModules] = useState<Module[]>([]);
   const [sections, setSections] = useState<QuizSection[]>([]);
+  const [sectionsLoaded, setSectionsLoaded] = useState(false);
   const [courseProgress, setCourseProgress] = useState(0);
   const isComplete = useMemo(() => Math.round(courseProgress) >= 100, [courseProgress]);
   const [activeSlug, setActiveSlug] = useState<string | null>(lessonSlugParam ?? null);
@@ -381,6 +465,7 @@ const CoursePlayerPage: React.FC = () => {
   const [isControlsVisible, setIsControlsVisible] = useState(true);
   const controlsTimeoutRef = useRef<number | null>(null);
   const lastProgressSnapshotRef = useRef<number | null>(null);
+  const suppressResumeCacheWriteRef = useRef(false);
   const [passedQuizzes, setPassedQuizzes] = useState<Set<string>>(new Set());
 
   // Video playback state
@@ -509,19 +594,38 @@ const CoursePlayerPage: React.FC = () => {
     const idx = realModules.findIndex((m) => m.id === currentModuleId);
     return idx >= 0 ? idx + 1 : currentModuleId;
   }, [realModules, currentModuleId]);
+  const userScope = useMemo(() => {
+    const userId = session?.userId?.trim();
+    if (userId) {
+      return userId;
+    }
+    const email = session?.email?.trim().toLowerCase();
+    return email && email.length > 0 ? email : null;
+  }, [session?.email, session?.userId]);
   const greetingMessage = useMemo(() => buildTopicGreeting(activeLesson), [activeLesson]);
   const availableStarterSuggestions = useMemo(() => {
     if (starterSuggestions.length === 0) return [];
     return starterSuggestions.filter((suggestion) => !usedSuggestionIds.has(suggestion.id));
   }, [starterSuggestions, usedSuggestionIds]);
   const chatListRef = useRef<HTMLDivElement | null>(null);
+  const chatMessageRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const activeQuestionAnchorIdRef = useRef<string | null>(null);
+  const lastAutoFocusedQuestionMessageRef = useRef<string | null>(null);
   const contentScrollRef = useRef<HTMLDivElement | null>(null);
   useLayoutEffect(() => {
-    const container = chatListRef.current;
-    if (!container) {
+    const anchorId = activeQuestionAnchorIdRef.current;
+    if (!anchorId) {
       return;
     }
-    container.scrollTop = container.scrollHeight;
+    if (lastAutoFocusedQuestionMessageRef.current === anchorId) {
+      return;
+    }
+    const node = chatMessageRefs.current[anchorId];
+    if (!node) {
+      return;
+    }
+    lastAutoFocusedQuestionMessageRef.current = anchorId;
+    node.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [chatMessages]);
 
   useEffect(() => {
@@ -553,6 +657,8 @@ const CoursePlayerPage: React.FC = () => {
   useEffect(() => {
     const welcomeId = `welcome-${activeLesson?.slug ?? "welcome"}`;
     setChatMessages([{ id: welcomeId, text: greetingMessage, isBot: true }]);
+    activeQuestionAnchorIdRef.current = null;
+    lastAutoFocusedQuestionMessageRef.current = null;
     setUsedSuggestionIds(new Set());
     setPendingSuggestion(null);
     setInlineFollowUps({});
@@ -625,7 +731,12 @@ const CoursePlayerPage: React.FC = () => {
   }, [loadChatHistory]);
 
   const fetchTopics = useCallback(async () => {
-    if (!courseKey) return;
+    if (!courseKey) {
+      setLessons([]);
+      setTopicsLoaded(true);
+      return;
+    }
+    setTopicsLoaded(false);
     try {
       const headers: HeadersInit = {};
       if (session?.accessToken) {
@@ -653,19 +764,17 @@ const CoursePlayerPage: React.FC = () => {
       }));
       const sorted = mapped.sort((a, b) => a.moduleNo - b.moduleNo || a.topicNumber - b.topicNumber);
       setLessons(sorted);
-      if (!activeSlug && sorted.length > 0) {
-        setActiveSlug(sorted[0].slug);
-        setLocation(`/course/${courseKey}/learn/${sorted[0].slug}`);
-      }
-      // Modules will be built once sections arrive; nothing else here
     } catch (error) {
+      setLessons([]);
       toast({
         variant: "destructive",
         title: "Unable to load course",
         description: error instanceof Error ? error.message : "Please try again.",
       });
+    } finally {
+      setTopicsLoaded(true);
     }
-  }, [courseKey, session?.accessToken, setLocation, toast]);
+  }, [courseKey, session?.accessToken, toast]);
 
   const fetchPromptSuggestions = useCallback(async () => {
     if (!courseKey || !session?.accessToken) {
@@ -708,7 +817,12 @@ const CoursePlayerPage: React.FC = () => {
 
   // Lock system disabled: keep sections empty and progress at 0
   const fetchSections = useCallback(async () => {
-    if (!courseKey || !session?.accessToken) return;
+    if (!courseKey || !session?.accessToken) {
+      setSections([]);
+      setSectionsLoaded(true);
+      return;
+    }
+    setSectionsLoaded(false);
     try {
       const res = await fetch(buildApiUrl(`/api/quiz/sections/${courseKey}`), {
         credentials: "include",
@@ -735,6 +849,10 @@ const CoursePlayerPage: React.FC = () => {
       setCourseProgress(total > 0 ? Math.round((passed / total) * 100) : 0);
     } catch (error) {
       console.error("Failed to load quiz sections", error);
+      setSections([]);
+      setCourseProgress(0);
+    } finally {
+      setSectionsLoaded(true);
     }
   }, [courseKey, session?.accessToken]);
 
@@ -786,10 +904,6 @@ const CoursePlayerPage: React.FC = () => {
 
   const handleCloseCohortProject = useCallback(() => {
     setCohortProjectOpen(false);
-  }, []);
-
-  const fetchProgress = useCallback(async () => {
-    // courseProgress derived from sections
   }, []);
 
   // Hydrate modules with quizzes when lessons/sections change
@@ -880,17 +994,6 @@ const CoursePlayerPage: React.FC = () => {
       };
     });
     setModules(newModules);
-
-    // If no active slug set yet, jump to first unlocked lesson
-    if (!activeSlug) {
-      const firstUnlockedLesson = newModules
-        .flatMap((m) => m.submodules)
-        .find((s) => s.type === "video" && s.unlocked && s.slug);
-      if (firstUnlockedLesson?.slug) {
-        setActiveSlug(firstUnlockedLesson.slug);
-        setLocation(`/course/${courseKey}/learn/${firstUnlockedLesson.slug}`);
-      }
-    }
   }, [lessons, sections]);
 
   useEffect(() => {
@@ -900,6 +1003,137 @@ const CoursePlayerPage: React.FC = () => {
   useEffect(() => {
     void fetchSections();
   }, [fetchSections]);
+
+  useEffect(() => {
+    if (!sessionHydrated || !topicsLoaded || !sectionsLoaded || lessons.length === 0 || modules.length === 0 || !courseKey) {
+      return;
+    }
+
+    const normalizedParam = normalizeSlugValue(lessonSlugParam);
+    const normalizedActive = normalizeSlugValue(activeSlug);
+    const isPlaceholderParam = normalizedParam.length > 0 && RESUME_PLACEHOLDER_SLUGS.has(normalizedParam);
+    const introSlugNormalized = normalizeSlugValue(lessons[0]?.slug ?? "");
+    const isIntroSlugParam = normalizedParam.length > 0 && normalizedParam === introSlugNormalized;
+
+    const findByNormalizedSlug = (value: string) =>
+      lessons.find((lesson) => normalizeSlugValue(lesson.slug) === value) ?? null;
+
+    const explicitLesson =
+      normalizedParam.length > 0 && !isPlaceholderParam && !isIntroSlugParam
+        ? findByNormalizedSlug(normalizedParam)
+        : null;
+
+    const isLessonUnlocked = (lesson: Lesson): boolean => {
+      if (modules.length === 0) {
+        return true;
+      }
+      const navNode = modules
+        .flatMap((module) => module.submodules)
+        .find((submodule) => submodule.type === "video" && submodule.id === lesson.topicId);
+      if (!navNode) {
+        return true;
+      }
+      return navNode.unlocked !== false;
+    };
+
+    let targetLesson = explicitLesson;
+
+    if (!targetLesson) {
+      const cached = readResumeCache(userScope, courseKey);
+      if (cached) {
+        const cachedMatch =
+          lessons.find((lesson) => lesson.topicId === cached.topicId) ??
+          findByNormalizedSlug(normalizeSlugValue(cached.slug));
+        if (cachedMatch && isLessonUnlocked(cachedMatch)) {
+          targetLesson = cachedMatch;
+        }
+      }
+    }
+
+    if (!targetLesson) {
+      // Cross-device fallback: open the most advanced unlocked lesson.
+      const lastUnlockedLesson = modules
+        .flatMap((module) => module.submodules)
+        .filter((submodule) => submodule.type === "video" && submodule.unlocked)
+        .map((submodule) => lessons.find((lesson) => lesson.topicId === submodule.id))
+        .filter((lesson): lesson is Lesson => Boolean(lesson))
+        .sort((a, b) => {
+          if (a.moduleNo !== b.moduleNo) {
+            return b.moduleNo - a.moduleNo;
+          }
+          return b.topicNumber - a.topicNumber;
+        })[0];
+
+      targetLesson = lastUnlockedLesson ?? null;
+    }
+
+    if (!targetLesson) {
+      targetLesson = lessons[0] ?? null;
+    }
+
+    if (!targetLesson?.slug) {
+      return;
+    }
+
+    const normalizedTarget = normalizeSlugValue(targetLesson.slug);
+    if (normalizedActive !== normalizedTarget) {
+      suppressResumeCacheWriteRef.current = true;
+      setActiveSlug(targetLesson.slug);
+    }
+    if (normalizedParam !== normalizedTarget) {
+      setLocation(`/course/${courseKey}/learn/${targetLesson.slug}`);
+    }
+  }, [
+    sessionHydrated,
+    topicsLoaded,
+    sectionsLoaded,
+    lessons,
+    modules,
+    userScope,
+    courseKey,
+    lessonSlugParam,
+    activeSlug,
+    setLocation,
+  ]);
+
+  useEffect(() => {
+    if (!sessionHydrated || !topicsLoaded || !sectionsLoaded || modules.length === 0 || !courseKey || !activeLesson?.topicId) {
+      return;
+    }
+    if (suppressResumeCacheWriteRef.current) {
+      suppressResumeCacheWriteRef.current = false;
+      return;
+    }
+    if (typeof activeLesson.moduleNo !== "number" || typeof activeLesson.topicNumber !== "number") {
+      return;
+    }
+
+    const normalizedParam = normalizeSlugValue(lessonSlugParam);
+    const normalizedActive = normalizeSlugValue(activeLesson.slug);
+    const isPlaceholderParam = normalizedParam.length > 0 && RESUME_PLACEHOLDER_SLUGS.has(normalizedParam);
+    if (!isPlaceholderParam && normalizedParam.length > 0 && normalizedParam !== normalizedActive) {
+      return;
+    }
+
+    writeResumeCache(userScope, courseKey, {
+      topicId: activeLesson.topicId,
+      slug: activeLesson.slug,
+      moduleNo: activeLesson.moduleNo,
+      topicNumber: activeLesson.topicNumber,
+    });
+  }, [
+    sessionHydrated,
+    topicsLoaded,
+    sectionsLoaded,
+    modules.length,
+    courseKey,
+    lessonSlugParam,
+    activeLesson?.topicId,
+    activeLesson?.slug,
+    activeLesson?.moduleNo,
+    activeLesson?.topicNumber,
+    userScope,
+  ]);
 
   useEffect(() => {
     setInlineFollowUps({});
@@ -920,6 +1154,7 @@ const CoursePlayerPage: React.FC = () => {
   useEffect(() => {
     const unsubscribe = subscribeToSession((nextSession) => {
       setSession(nextSession);
+      setSessionHydrated(true);
       updateTelemetryAccessToken(nextSession?.accessToken ?? null);
     });
     return () => unsubscribe();
@@ -1309,6 +1544,8 @@ const CoursePlayerPage: React.FC = () => {
 
       const userMsg: ChatMessage = { id: makeId(), text: question, isBot: false, suggestionContext: suggestion };
       setChatMessages((prev) => [...prev, userMsg]);
+      activeQuestionAnchorIdRef.current = userMsg.id;
+      lastAutoFocusedQuestionMessageRef.current = null;
       if (!suggestion) {
         setChatInput("");
       } else {
@@ -1863,9 +2100,7 @@ const CoursePlayerPage: React.FC = () => {
               <ChevronLeft size={18} /> Back
             </button>
             <div>
-              <p className="text-xs text-[#f8f1e6]/60">
-                Module {activeLesson?.moduleNo} - Topic {activeLesson?.topicNumber}
-              </p>
+              <p className="text-xs text-[#f8f1e6]/60">Module {activeLesson?.moduleNo}</p>
               <h1 className="text-xl md:text-2xl font-black leading-tight">{activeLesson?.topicName ?? "Loading..."}</h1>
             </div>
           </div>
@@ -2109,13 +2344,23 @@ const CoursePlayerPage: React.FC = () => {
             ref={chatListRef}
             className="flex-1 overflow-y-auto p-3 space-y-3 bg-black/40 text-sm text-[#f8f1e6]/80"
           >
-            {chatMessages.map((msg, index) => {
+            {chatMessages.map((msg) => {
               const followUpsForMessage = inlineFollowUps[msg.id] ?? [];
               const showInlineChip =
                 !!msg.suggestionContext && msg.isBot && Boolean(inlineFollowUps[msg.id]?.length);
 
               return (
-                <div key={msg.id} className="space-y-2">
+                <div
+                  key={msg.id}
+                  ref={(node) => {
+                    if (node) {
+                      chatMessageRefs.current[msg.id] = node;
+                    } else {
+                      delete chatMessageRefs.current[msg.id];
+                    }
+                  }}
+                  className="space-y-2"
+                >
                   <div
                     className={`p-2 rounded-lg ${msg.isBot ? "bg-white/5 border border-white/10" : "bg-[#bf2f1f]/20 border border-[#bf2f1f]/40"} ${msg.error ? "border-red-500/60 text-red-200" : ""
                       }`}
