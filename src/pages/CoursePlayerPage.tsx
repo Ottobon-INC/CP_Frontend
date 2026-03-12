@@ -249,6 +249,22 @@ const pickRandomSubset = <T,>(items: T[], count: number): T[] => {
 };
 
 const PASSING_PERCENT_THRESHOLD = 70;
+const CHAT_STREAM_TICK_MS = 60;
+const CHAT_STREAM_CHARS_PER_TICK = 1;
+const CHAT_DEFAULT_WIDTH = 350;
+const CHAT_DEFAULT_HEIGHT = 450;
+const CHAT_EXPAND_SCALE = 1.3;
+const CHAT_RIGHT_OFFSET = 24;
+const CHAT_BOTTOM_OFFSET = 96;
+const CHAT_LOADING_MESSAGES = [
+  "Reviewing course context...",
+  "Collecting relevant lesson insights...",
+  "Preparing a focused tutor response...",
+  "Verifying the answer against this topic...",
+  "Finalizing the explanation...",
+];
+const CHAT_LOADING_MESSAGE_ROTATE_MS = 1600;
+const CHAT_SUGGESTION_MIN_WAIT_MS = 2200;
 
 const slugify = (text: string) =>
   text
@@ -476,7 +492,14 @@ const CoursePlayerPage: React.FC = () => {
 
   // Widgets
   const [chatOpen, setChatOpen] = useState(false);
-  const [chatRect, setChatRect] = useState({ x: 0, y: 0, width: 350, height: 450, initialized: false });
+  const [chatRect, setChatRect] = useState({
+    x: 0,
+    y: 0,
+    width: CHAT_DEFAULT_WIDTH,
+    height: CHAT_DEFAULT_HEIGHT,
+    initialized: false,
+  });
+  const [chatExpanded, setChatExpanded] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
   const [notesRect, setNotesRect] = useState({ x: 0, y: 0, width: 350, height: 300, initialized: false });
   const [studyWidgetOpen, setStudyWidgetOpen] = useState(false);
@@ -519,6 +542,7 @@ const CoursePlayerPage: React.FC = () => {
   ]);
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
+  const [chatLoadingMessage, setChatLoadingMessage] = useState(CHAT_LOADING_MESSAGES[0]);
   const [chatSessionId, setChatSessionId] = useState<string | null>(null);
   const [chatHistoryLoading, setChatHistoryLoading] = useState(false);
   const [starterSuggestions, setStarterSuggestions] = useState<PromptSuggestion[]>([]);
@@ -609,9 +633,34 @@ const CoursePlayerPage: React.FC = () => {
   }, [starterSuggestions, usedSuggestionIds]);
   const chatListRef = useRef<HTMLDivElement | null>(null);
   const chatMessageRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const lastActiveTopicIdRef = useRef<string | null>(null);
   const activeQuestionAnchorIdRef = useRef<string | null>(null);
   const lastAutoFocusedQuestionMessageRef = useRef<string | null>(null);
   const contentScrollRef = useRef<HTMLDivElement | null>(null);
+
+  const scrollChatToBottom = useCallback(() => {
+    const node = chatListRef.current;
+    if (!node) {
+      return;
+    }
+    node.scrollTop = node.scrollHeight;
+  }, []);
+
+  useEffect(() => {
+    const currentTopicId = activeLesson?.topicId ?? null;
+    if (!currentTopicId) {
+      return;
+    }
+    if (lastActiveTopicIdRef.current === null) {
+      lastActiveTopicIdRef.current = currentTopicId;
+      return;
+    }
+    if (lastActiveTopicIdRef.current !== currentTopicId) {
+      setChatOpen(false);
+    }
+    lastActiveTopicIdRef.current = currentTopicId;
+  }, [activeLesson?.topicId]);
+
   useLayoutEffect(() => {
     const anchorId = activeQuestionAnchorIdRef.current;
     if (!anchorId) {
@@ -627,6 +676,19 @@ const CoursePlayerPage: React.FC = () => {
     lastAutoFocusedQuestionMessageRef.current = anchorId;
     node.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [chatMessages]);
+
+  useEffect(() => {
+    if (!chatOpen) {
+      return;
+    }
+    // On every open/reopen, start from the latest message at the bottom.
+    const rafId = window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        scrollChatToBottom();
+      });
+    });
+    return () => window.cancelAnimationFrame(rafId);
+  }, [chatOpen, scrollChatToBottom]);
 
   useEffect(() => {
     if (!shouldRefreshStarterBatch) {
@@ -715,6 +777,12 @@ const CoursePlayerPage: React.FC = () => {
       setChatSessionId(typeof payload?.sessionId === "string" ? payload.sessionId : null);
     } finally {
       setChatHistoryLoading(false);
+      // Ensure we snap again after history payload has been rendered.
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+          scrollChatToBottom();
+        });
+      });
     }
   }, [
     activeLesson?.courseId,
@@ -723,6 +791,7 @@ const CoursePlayerPage: React.FC = () => {
     chatOpen,
     courseKey,
     greetingMessage,
+    scrollChatToBottom,
     session?.accessToken,
   ]);
 
@@ -1241,12 +1310,35 @@ const CoursePlayerPage: React.FC = () => {
   }, [isQuizMode, quizPhase, quizTimer]);
 
   // Widget positioning
+  const getChatPresetRect = (expanded: boolean) => {
+    const winW = window.innerWidth;
+    const winH = window.innerHeight;
+    const scale = expanded ? CHAT_EXPAND_SCALE : 1;
+    const desiredWidth = Math.round(CHAT_DEFAULT_WIDTH * scale);
+    const desiredHeight = Math.round(CHAT_DEFAULT_HEIGHT * scale);
+    const width = Math.min(desiredWidth, Math.max(280, winW - 12));
+    const height = Math.min(desiredHeight, Math.max(240, winH - 12));
+    const x = Math.max(0, winW - width - CHAT_RIGHT_OFFSET);
+    const y = Math.max(0, winH - height - CHAT_BOTTOM_OFFSET);
+    return { x, y, width, height, initialized: true };
+  };
+
   const centerWidget = (widget: "study" | "chat" | "notes") => {
     const winW = window.innerWidth;
     const winH = window.innerHeight;
     if (widget === "study") setStudyWidgetRect({ x: winW / 2 - 300, y: winH / 2 - 225, width: 600, height: 450, initialized: true });
-    if (widget === "chat") setChatRect({ x: winW - 374, y: winH - 546, width: 350, height: 450, initialized: true });
+    if (widget === "chat") setChatRect(getChatPresetRect(chatExpanded));
     if (widget === "notes") setNotesRect({ x: 24, y: winH - 374, width: 350, height: 300, initialized: true });
+  };
+
+  const handleChatExpandToggle = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setChatExpanded((prev) => {
+      const next = !prev;
+      setChatRect(getChatPresetRect(next));
+      return next;
+    });
   };
 
   useEffect(() => {
@@ -1557,6 +1649,23 @@ const CoursePlayerPage: React.FC = () => {
         setPendingSuggestion(suggestion);
       }
       setChatLoading(true);
+      let loadingMessageIndex = 0;
+      let loadingMessageInterval: ReturnType<typeof setInterval> | null = null;
+      const stopLoadingMessageLoop = () => {
+        if (loadingMessageInterval) {
+          clearInterval(loadingMessageInterval);
+          loadingMessageInterval = null;
+        }
+      };
+      const startLoadingMessageLoop = () => {
+        loadingMessageIndex = Math.floor(Math.random() * CHAT_LOADING_MESSAGES.length);
+        setChatLoadingMessage(CHAT_LOADING_MESSAGES[loadingMessageIndex]);
+        loadingMessageInterval = setInterval(() => {
+          loadingMessageIndex = (loadingMessageIndex + 1) % CHAT_LOADING_MESSAGES.length;
+          setChatLoadingMessage(CHAT_LOADING_MESSAGES[loadingMessageIndex]);
+        }, CHAT_LOADING_MESSAGE_ROTATE_MS);
+      };
+      startLoadingMessageLoop();
       setInlineFollowUps((prev) => {
         const next = { ...prev };
         if (suggestion) {
@@ -1570,11 +1679,16 @@ const CoursePlayerPage: React.FC = () => {
         { moduleNo: moduleNoForChat, topicId: activeLesson?.topicId ?? null },
       );
 
-      let botMessageId: string | null = null;
+      // Create an empty tutor bubble immediately so loading/status UI is visible
+      // during the full request lifecycle (including initial API wait time).
+      const botId = makeId();
+      let botMessageId: string | null = botId;
+      setChatMessages((prev) => [...prev, { id: botId, text: "", isBot: true, suggestionContext: suggestion }]);
       try {
         if (!session?.accessToken) {
           throw new Error("Please sign in to chat with the tutor.");
         }
+        const requestStartedAt = Date.now();
         const body: Record<string, unknown> = {
           question,
           courseId: courseIdForChat,
@@ -1601,59 +1715,189 @@ const CoursePlayerPage: React.FC = () => {
           throw new Error(msg);
         }
 
-        let answer: string;
+        let answer = "I could not find an answer for that right now.";
         let sessionId: string | undefined;
         let nextSuggestions: Array<{ id: string; promptText: string; answer: string | null }> = [];
 
         if (res.status === 202 && payload?.jobId) {
-          // ── Async path: SSE stream for instant delivery ──
+          // ── Async path: true incremental stream ──
           if (typeof payload?.sessionId === "string") {
             setChatSessionId(payload.sessionId);
           }
+          let streamedAnswer = "";
+          let pendingChunkQueue = "";
+          let streamEnded = false;
+          let firstVisibleChunkRendered = false;
+          let playbackInterval: ReturnType<typeof setInterval> | null = null;
+          let resolvePlayback: (() => void) | null = null;
+          const playbackDone = new Promise<void>((resolve) => {
+            resolvePlayback = resolve;
+          });
+          const stopPlayback = () => {
+            if (playbackInterval) {
+              clearInterval(playbackInterval);
+              playbackInterval = null;
+            }
+            if (resolvePlayback) {
+              resolvePlayback();
+              resolvePlayback = null;
+            }
+          };
+          const applyQueuedChunk = () => {
+            if (!pendingChunkQueue) {
+              if (streamEnded) {
+                stopPlayback();
+              }
+              return;
+            }
+            const nextSlice = pendingChunkQueue.slice(0, CHAT_STREAM_CHARS_PER_TICK);
+            pendingChunkQueue = pendingChunkQueue.slice(CHAT_STREAM_CHARS_PER_TICK);
+            streamedAnswer += nextSlice;
+            if (!firstVisibleChunkRendered && streamedAnswer.trim().length > 0) {
+              firstVisibleChunkRendered = true;
+              stopLoadingMessageLoop();
+            }
+            setChatMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === botId
+                  ? { ...msg, text: streamedAnswer }
+                  : msg,
+              ),
+            );
+            if (!pendingChunkQueue && streamEnded) {
+              stopPlayback();
+            }
+          };
+          const ensurePlaybackLoop = () => {
+            if (playbackInterval) {
+              return;
+            }
+            playbackInterval = setInterval(applyQueuedChunk, CHAT_STREAM_TICK_MS);
+          };
+
           const jobId = payload.jobId as string;
-          const result = await streamJobResult(
-            buildApiUrl(`/assistant/stream/${jobId}`),
-            { Authorization: `Bearer ${session.accessToken}` },
-          );
-          answer = (result?.answer as string) ?? "I could not find an answer for that right now.";
-          sessionId = typeof result?.sessionId === "string" ? result.sessionId : undefined;
-          nextSuggestions = Array.isArray(result?.nextSuggestions) ? result.nextSuggestions : [];
+          try {
+            const result = await streamJobResult(
+              buildApiUrl(`/assistant/stream/${jobId}`),
+              { Authorization: `Bearer ${session.accessToken}` },
+              {
+                onStatus: () => {
+                  // Intentionally avoid exposing backend queue text in UI.
+                  // The curated rotating loading messages stay active until
+                  // the first response chunk is rendered.
+                },
+                onChunk: (chunkText) => {
+                  pendingChunkQueue += chunkText;
+                  ensurePlaybackLoop();
+                },
+              },
+            );
+            const resolvedAnswer = typeof result?.answer === "string" ? result.answer : "";
+            if (streamedAnswer.trim().length === 0 && resolvedAnswer.trim().length > 0) {
+              // Fallback: if backend delivers only final `completed` payload,
+              // still render with paced playback instead of instant pop-in.
+              pendingChunkQueue += resolvedAnswer;
+              ensurePlaybackLoop();
+            }
+            streamEnded = true;
+            ensurePlaybackLoop();
+            applyQueuedChunk();
+            await playbackDone;
+
+            answer = streamedAnswer.trim().length > 0
+              ? streamedAnswer
+              : resolvedAnswer.trim().length > 0
+                ? resolvedAnswer
+                : answer;
+            sessionId = typeof result?.sessionId === "string" ? result.sessionId : undefined;
+            nextSuggestions = Array.isArray(result?.nextSuggestions) ? result.nextSuggestions : [];
+          } finally {
+            stopPlayback();
+          }
         } else {
           // ── Sync path: suggestion-based queries return 200 with answer inline ──
           answer = payload?.answer ?? "I could not find an answer for that right now.";
           sessionId = typeof payload?.sessionId === "string" ? payload.sessionId : undefined;
           nextSuggestions = Array.isArray(payload?.nextSuggestions) ? payload.nextSuggestions : [];
+
+          if (suggestion && answer.trim().length > 0) {
+            const elapsedMs = Date.now() - requestStartedAt;
+            const remainingWaitMs = Math.max(0, CHAT_SUGGESTION_MIN_WAIT_MS - elapsedMs);
+            if (remainingWaitMs > 0) {
+              await new Promise<void>((resolve) => {
+                setTimeout(resolve, remainingWaitMs);
+              });
+            }
+
+            let typedAnswer = "";
+            let queued = answer;
+            let firstVisibleChunkRendered = false;
+            await new Promise<void>((resolve) => {
+              const timer = setInterval(() => {
+                if (!queued) {
+                  clearInterval(timer);
+                  resolve();
+                  return;
+                }
+                const nextSlice = queued.slice(0, CHAT_STREAM_CHARS_PER_TICK);
+                queued = queued.slice(CHAT_STREAM_CHARS_PER_TICK);
+                typedAnswer += nextSlice;
+                if (!firstVisibleChunkRendered && typedAnswer.trim().length > 0) {
+                  firstVisibleChunkRendered = true;
+                  stopLoadingMessageLoop();
+                }
+                setChatMessages((prev) =>
+                  prev.map((msg) =>
+                    msg.id === botId
+                      ? { ...msg, text: typedAnswer }
+                      : msg,
+                  ),
+                );
+              }, CHAT_STREAM_TICK_MS);
+            });
+            answer = typedAnswer;
+          }
         }
 
-        const botId = makeId();
-        botMessageId = botId;
+        stopLoadingMessageLoop();
         setStarterAnchorMessageId(botId);
-        setChatMessages((prev) => [...prev, { id: botId, text: answer, isBot: true, suggestionContext: suggestion }]);
+
+        setChatMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === botId
+              ? { ...msg, text: answer, error: false }
+              : msg,
+          ),
+        );
         if (sessionId) {
           setChatSessionId(sessionId);
         }
-        if (suggestion) {
-          setInlineFollowUps((prev) => ({
-            ...prev,
-            [botId]: nextSuggestions,
-          }));
-        } else {
-          setInlineFollowUps((prev) => ({
-            ...prev,
-            [botId]: nextSuggestions,
-          }));
-        }
+        setInlineFollowUps((prev) => ({
+          ...prev,
+          [botId]: nextSuggestions,
+        }));
         emitTelemetry(
           "tutor.response_received",
           { suggestionId: suggestion?.id, followUps: nextSuggestions.length },
           { moduleNo: moduleNoForChat, topicId: activeLesson?.topicId ?? null },
         );
       } catch (error) {
+        stopLoadingMessageLoop();
         const raw = error instanceof Error ? error.message : "Tutor unavailable";
         const friendly = raw.toLowerCase().includes("internal server error")
           ? "Tutor is unavailable right now. Please try again soon."
           : raw;
-        setChatMessages((prev) => [...prev, { id: makeId(), text: friendly, isBot: true, error: true }]);
+        if (botMessageId) {
+          setChatMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === botMessageId
+                ? { ...msg, text: friendly, error: true }
+                : msg,
+            ),
+          );
+        } else {
+          setChatMessages((prev) => [...prev, { id: makeId(), text: friendly, isBot: true, error: true }]);
+        }
         if (suggestion) {
           setInlineFollowUps((prev) => {
             const updated = { ...prev };
@@ -1664,6 +1908,7 @@ const CoursePlayerPage: React.FC = () => {
       } finally {
         setPendingSuggestion(null);
         setChatLoading(false);
+        setChatLoadingMessage(CHAT_LOADING_MESSAGES[0]);
         if (botMessageId) {
           setShouldRefreshStarterBatch(true);
         }
@@ -1984,16 +2229,7 @@ const CoursePlayerPage: React.FC = () => {
                   ? `Intro (of ${realModules.length})`
                   : `Module ${currentModuleDisplay} of ${realModules.length}`}
               </span>
-              {isComplete ? (
-                <button
-                  onClick={() => setLocation(`/course/${courseKey}/congrats`)}
-                  className="px-2 py-1 rounded-md bg-[#bf2f1f] text-white text-[11px] font-bold hover:bg-[#a02a19] transition"
-                >
-                  Certificate
-                </button>
-              ) : (
-                <span className="text-[#f8f1e6]/60">{Math.round(courseProgress)}%</span>
-              )}
+              <span className="text-[#f8f1e6]/60">{Math.round(courseProgress)}%</span>
             </div>
             <div className="h-1.5 bg-[#4a4845]/30 rounded-full overflow-hidden">
               <div className="h-full bg-[#bf2f1f] transition-all duration-500" style={{ width: `${courseProgress}%` }}></div>
@@ -2336,7 +2572,14 @@ const CoursePlayerPage: React.FC = () => {
           >
             <div className="flex items-center gap-2 text-white font-bold text-sm"><MessageSquare size={16} /> AI Tutor</div>
             <div className="flex items-center gap-1">
-              <button onClick={() => centerWidget("chat")} className="p-1 hover:bg-white/20 rounded" title="Reset Position"><Move size={14} className="text-white" /></button>
+              <button
+                onMouseDown={(event) => event.stopPropagation()}
+                onClick={handleChatExpandToggle}
+                className="p-1 hover:bg-white/20 rounded"
+                title={chatExpanded ? "Minimize" : "Maximize"}
+              >
+                {chatExpanded ? <Minimize size={14} className="text-white" /> : <Maximize size={14} className="text-white" />}
+              </button>
               <button onClick={() => setChatOpen(false)} className="p-1 hover:bg-white/20 rounded"><X size={14} className="text-white" /></button>
             </div>
           </div>
@@ -2347,7 +2590,9 @@ const CoursePlayerPage: React.FC = () => {
             {chatMessages.map((msg) => {
               const followUpsForMessage = inlineFollowUps[msg.id] ?? [];
               const showInlineChip =
-                !!msg.suggestionContext && msg.isBot && Boolean(inlineFollowUps[msg.id]?.length);
+                !!msg.suggestionContext && msg.isBot && Boolean(inlineFollowUps[msg.id]?.length) && !chatLoading;
+              const showThinkingIndicator =
+                msg.isBot && chatLoading && !msg.error && msg.text.trim().length === 0;
 
               return (
                 <div
@@ -2366,9 +2611,27 @@ const CoursePlayerPage: React.FC = () => {
                       }`}
                   >
                     <div className="text-[11px] uppercase tracking-wide opacity-70">{msg.isBot ? "Tutor" : "You"}</div>
-                    <div className="whitespace-pre-line">{msg.text}</div>
+                    {showThinkingIndicator ? (
+                      <div className="mt-1 rounded-lg border border-[#bf2f1f]/30 bg-gradient-to-br from-[#1a0b09] via-[#100809] to-[#070707] p-2.5 space-y-2">
+                        <div className="flex items-center gap-2 text-xs text-[#f8f1e6]/90">
+                          <span className="relative flex h-3 w-3">
+                            <span className="absolute inline-flex h-full w-full rounded-full bg-[#ff5a3c]/50 animate-ping" />
+                            <span className="relative inline-flex h-3 w-3 rounded-full bg-[#ff5a3c]" />
+                          </span>
+                          <span>{chatLoadingMessage}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="h-2 w-2 rounded-full bg-[#ff5a3c] animate-[pulse_1.1s_ease-in-out_infinite] [animation-delay:0ms] shadow-[0_0_8px_rgba(255,90,60,0.65)]" />
+                          <span className="h-2 w-2 rounded-full bg-[#ff5a3c] animate-[pulse_1.1s_ease-in-out_infinite] [animation-delay:140ms] shadow-[0_0_8px_rgba(255,90,60,0.65)]" />
+                          <span className="h-2 w-2 rounded-full bg-[#ff5a3c] animate-[pulse_1.1s_ease-in-out_infinite] [animation-delay:280ms] shadow-[0_0_8px_rgba(255,90,60,0.65)]" />
+                          <span className="h-2 w-2 rounded-full bg-[#ff5a3c] animate-[pulse_1.1s_ease-in-out_infinite] [animation-delay:420ms] shadow-[0_0_8px_rgba(255,90,60,0.65)]" />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="whitespace-pre-line">{msg.text}</div>
+                    )}
                   </div>
-                  {starterAnchorMessageId === msg.id && (
+                  {starterAnchorMessageId === msg.id && !chatLoading && (
                     <div className="pl-3 border-l border-white/10 space-y-2">
                       <p className="text-xs text-[#f8f1e6]/70">
                         Hello! Curious about this topic? Not sure what to ask? Choose one of these to get started.
@@ -2410,7 +2673,7 @@ const CoursePlayerPage: React.FC = () => {
                       </span>
                     </div>
                   )}
-                  {followUpsForMessage.length > 0 && (
+                  {followUpsForMessage.length > 0 && !chatLoading && (
                     <div className="pl-2 border-l border-white/10 space-y-1">
                       <div className="text-[10px] uppercase tracking-wide text-[#f8f1e6]/60">More to explore</div>
                       <div className="flex flex-wrap gap-2">
@@ -2434,9 +2697,6 @@ const CoursePlayerPage: React.FC = () => {
                 </div>
               );
             })}
-            {chatLoading && (
-              <div className="text-xs text-[#f8f1e6]/60">Tutor is thinking...</div>
-            )}
           </div>
           <div className="p-3 bg-white/5 border-t border-[#4a4845]/30 flex gap-2">
             <input
