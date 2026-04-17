@@ -24,7 +24,7 @@ import CourseDetailsPage from "@/pages/CourseDetailsPage";
 import CohortPage from "@/pages/CohortPage";
 import OnDemandPage from "@/pages/OnDemandPage";
 import WorkshopPage from "@/pages/WorkshopPage";
-import StudentDashboardPage from "@/pages/Strudent_Dashboard";
+import StudentDashboardPage from "@/pages/StudentDashboard";
 import RegistrationPage from "@/pages/RegistrationPage";
 
 import MethodologyPage from "@/pages/MethodologyPage";
@@ -42,12 +42,13 @@ function Router() {
       <Route path="/our-courses/on-demand" component={OnDemandPage} />
       <Route path="/our-courses/workshops" component={WorkshopPage} />
 
-      {/* Registration Routes - URL-driven multi-stage flow */}
-      <Route path="/registration" component={RegistrationPage} />
-      <Route path="/registration/:programType" component={RegistrationPage} />
-      <Route path="/registration/:programType/:courseSlug" component={RegistrationPage} />
-      <Route path="/registration/:programType/:courseSlug/assessment" component={RegistrationPage} />
+      {/* Registration Routes - Most specific first */}
       <Route path="/registration/:programType/:courseSlug/success" component={RegistrationPage} />
+      <Route path="/registration/:programType/:courseSlug/payment" component={RegistrationPage} />
+      <Route path="/registration/:programType/:courseSlug/assessment" component={RegistrationPage} />
+      <Route path="/registration/:programType/:courseSlug" component={RegistrationPage} />
+      <Route path="/registration/:programType" component={RegistrationPage} />
+      <Route path="/registration" component={RegistrationPage} />
 
       {/* Course Routes */}
       <Route path="/course/:id/assessment" component={AssessmentPage} />
@@ -58,7 +59,24 @@ function Router() {
       <Route path="/ondemand/:id/congrats/feedback" component={CongratsFeedbackPage} />
       <Route path="/ondemand/:id/congrats" component={CongratsPage} />
       <Route path="/course/:id" component={CourseDetailsPage} />
+      {/* Student Dashboard Routes - Consolidated into the modular system */}
+      <Route path="/dashboard">
+        {() => {
+          window.location.replace("/student-dashboard");
+          return null;
+        }}
+      </Route>
       <Route path="/student-dashboard" component={StudentDashboardPage} />
+      <Route path="/student-dashboard/:rest*" component={StudentDashboardPage} />
+      
+      <Route path="/analysis" component={StudentDashboardPage} />
+      <Route path="/feedback" component={StudentDashboardPage} />
+      <Route path="/settings" component={StudentDashboardPage} />
+      <Route path="/leaderboard" component={StudentDashboardPage} />
+      <Route path="/cohorts" component={StudentDashboardPage} />
+      <Route path="/my-courses" component={StudentDashboardPage} />
+      <Route path="/certificates" component={StudentDashboardPage} />
+      <Route path="/messages" component={StudentDashboardPage} />
       <Route path="/auth/callback" component={AuthCallbackPage} />
 
 
@@ -86,7 +104,15 @@ function App({ isAuthenticated, user, setIsAuthenticated, setUser }: any) {
     location.startsWith("/ondemand/") ||
     location.startsWith("/registration") ||
     location.startsWith("/blogs") ||
-    location === "/student-dashboard";
+    location.startsWith("/student-dashboard") ||
+    location === "/analysis" ||
+    location === "/feedback" ||
+    location === "/settings" ||
+    location === "/leaderboard" ||
+    location === "/cohorts" ||
+    location === "/my-courses" ||
+    location === "/certificates" ||
+    location === "/messages";
 
   useEffect(() => {
     if (typeof window === "undefined") {
