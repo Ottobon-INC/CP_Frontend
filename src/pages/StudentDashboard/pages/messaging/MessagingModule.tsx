@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import MessagingSidebar from "./MessagingSidebar";
 import ChatWindow from "./ChatWindow";
 import Composer from "./Composer";
@@ -9,9 +9,12 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useMessaging } from "../../hooks/useMessaging";
 import { readStoredSession } from "@/utils/session";
+import { API_BASE_URL, buildApiUrl } from "@/lib/api";
 
 export default function MessagingModule() {
   const [session, setSession] = useState<any>(null);
+  const [selectedCohortId, setSelectedCohortId] = useState<string | null>(null);
+  const [selectedCourseTitle, setSelectedCourseTitle] = useState<string | null>(null);
   
   useEffect(() => {
     const init = async () => {
@@ -22,8 +25,42 @@ export default function MessagingModule() {
   }, []);
 
   const { data: summary } = useDashboardSummary();
-  const selectedCohortId = summary?.cohorts?.[0]?.id || null;
+
+  const courseGroups = useMemo(() => {
+    if (!summary?.cohorts) return {} as Record<string, Array<{ id: string; batchNo: number }>>;
+    return summary.cohorts.reduce((acc, cohort) => {
+      const title = cohort.title;
+      if (!acc[title]) acc[title] = [];
+      acc[title].push({ id: cohort.id, batchNo: cohort.batchNo });
+      return acc;
+    }, {} as Record<string, Array<{ id: string; batchNo: number }>>);
+  }, [summary]);
+
+  const uniqueCourses = Object.keys(courseGroups);
+
+  useEffect(() => {
+    if (uniqueCourses.length === 0) {
+      setSelectedCourseTitle(null);
+      setSelectedCohortId(null);
+      return;
+    }
+
+    if (!selectedCourseTitle || !courseGroups[selectedCourseTitle]) {
+      const firstCourse = uniqueCourses[0];
+      setSelectedCourseTitle(firstCourse);
+      setSelectedCohortId(courseGroups[firstCourse]?.[0]?.id ?? null);
+    }
+  }, [courseGroups, selectedCourseTitle, uniqueCourses]);
+
+  const handleCourseChange = useCallback(
+    (title: string) => {
+      setSelectedCourseTitle(title);
+      setSelectedCohortId(courseGroups[title]?.[0]?.id ?? null);
+    },
+    [courseGroups],
+  );
   const headers = session?.accessToken ? { Authorization: `Bearer ${session.accessToken}` } : undefined;
+  const currentUserId = session?.userId ?? "";
 
   const [activeCategory, setActiveCategory] = useState("team");
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
@@ -32,7 +69,7 @@ export default function MessagingModule() {
   const [orgUsers, setOrgUsers] = useState<MsgUser[]>([]);
   const { toast } = useToast();
 
-  // ── Hook ──
+  // ── Hooks ──
   const {
     messages,
     conversations,
@@ -66,7 +103,8 @@ export default function MessagingModule() {
   }, [headers, selectedCohortId, fetchConversations]);
 
   const filteredConversations = conversations.filter((c: Conversation) => {
-    const matchesCategory = c.type === activeCategory || (activeCategory === "myself" && c.type === "dm");
+    const isDmCategory = activeCategory === "tutors" || activeCategory === "team-members";
+    const matchesCategory = c.type === activeCategory || (isDmCategory && c.type === "dm");
     if (selectedCohortId && (c.type === "team" || c.type === "broadcast")) {
       return matchesCategory && (c as any).cohortId === selectedCohortId;
     }
@@ -200,14 +238,60 @@ export default function MessagingModule() {
       });
   }, [headers, selectedCohortId, fetchConversations]);
 
-  const handleCreateTeamChat = useCallback((name: string, _memberIds: string[]) => {
-    apiRequest("POST", `/api/messaging/conversations/cohort/${selectedCohortId}/team`, { batchNo: 1, title: name }, headers ? { headers } : undefined)
-      .then(res => res.json())
-      .then(data => {
-        fetchConversations(selectedCohortId);
+  const handleCreateTeamChat = useCallback(async (name: string, memberIds: string[]) => {
+    if (!selectedCohortId) return;
+    try {
+      const res = await apiRequest(
+        "POST",
+        `/api/messaging/conversations/cohort/${selectedCohortId}/team`,
+        { title: name, memberUserIds: memberIds },
+        headers ? { headers } : undefined,
+      );
+      const data = await res.json();
+      await fetchConversations(selectedCohortId);
+      if (data.conversation) {
         setSelectedConversation(data.conversation);
-      });
+      }
+    } catch (err) {
+      console.error("Failed to create team chat:", err);
+    }
   }, [selectedCohortId, headers, fetchConversations]);
+
+  const handleAddMemberToConversation = useCallback(async (conversationId: string, userId: string) => {
+    try {
+      const res = await apiRequest(
+        "POST",
+        `/api/messaging/conversations/${conversationId}/members`,
+        { userId },
+        headers ? { headers } : undefined,
+      );
+      const data = await res.json();
+      await fetchConversations(selectedCohortId);
+      if (data.conversation) {
+        setSelectedConversation(data.conversation);
+      }
+    } catch (err) {
+      console.error("Failed to add member:", err);
+    }
+  }, [headers, fetchConversations, selectedCohortId]);
+
+  const handleRenameConversation = useCallback(async (conversationId: string, newName: string) => {
+    try {
+      const res = await apiRequest(
+        "PUT",
+        `/api/messaging/conversations/${conversationId}/rename`,
+        { newName },
+        headers ? { headers } : undefined,
+      );
+      const data = await res.json();
+      await fetchConversations(selectedCohortId);
+      if (data.conversation) {
+        setSelectedConversation(data.conversation);
+      }
+    } catch (err) {
+      console.error("Failed to rename conversation:", err);
+    }
+  }, [headers, fetchConversations, selectedCohortId]);
 
   const handleStartChatWithUser = useCallback((user: MsgUser) => {
     if (!user.id) {
@@ -215,9 +299,11 @@ export default function MessagingModule() {
       return;
     }
     const existing = conversations.find((c: Conversation) => c.type === "dm" && c.members.some((m: any) => m.userId === user.id || m.id === user.id || (m.user && m.user.userId === user.id)));
+    const targetCategory =
+      user.role === "tutor" || user.role === "admin" ? "tutors" : "team-members";
     if (existing) {
       setSelectedConversation(existing);
-      setActiveCategory("myself");
+      setActiveCategory(targetCategory);
       setMobileView("chat");
     } else {
       apiRequest("POST", "/api/messaging/conversations/dm", { studentId: user.id }, headers ? { headers } : undefined)
@@ -226,7 +312,7 @@ export default function MessagingModule() {
           if (data.conversation) {
             fetchConversations(selectedCohortId);
             setSelectedConversation(data.conversation);
-            setActiveCategory("myself");
+            setActiveCategory(targetCategory);
             setMobileView("chat");
           } else {
             alert("Failed to start conversation: " + (data.message || "Unknown error"));
@@ -242,7 +328,7 @@ export default function MessagingModule() {
   return (
     <div className={`msg-container ${mobileView === "chat" ? "chat-active" : ""}`}>
       <MessagingSidebar
-        currentUserId={CURRENT_USER_ID}
+        currentUserId={currentUserId}
         activeCategory={activeCategory}
         setActiveCategory={setActiveCategory}
         conversations={filteredConversations}
@@ -252,12 +338,18 @@ export default function MessagingModule() {
         lastReadTimes={unseenCounts as any}
         onCreateTeamChat={handleCreateTeamChat}
         onStartChatWithUser={handleStartChatWithUser}
+        courses={uniqueCourses}
+        selectedCourse={selectedCourseTitle}
+        onCourseChange={handleCourseChange}
+        batches={selectedCourseTitle ? (courseGroups[selectedCourseTitle] ?? []) : []}
+        selectedBatchId={selectedCohortId}
+        onBatchChange={setSelectedCohortId}
       />
       <div className="msg-main-area">
         <ChatWindow
           selectedConversation={selectedConversation}
           messages={messages}
-          currentUserId={CURRENT_USER_ID}
+          currentUserId={currentUserId}
           orgUsers={orgUsers}
           isCurrentUserAdmin={session?.role === "tutor" || session?.role === "admin"}
           currentMembers={selectedConversation?.members || []}
@@ -273,16 +365,20 @@ export default function MessagingModule() {
           onBackToList={handleBackToList}
           conversations={conversations}
           onForward={handleForward}
+          onAddMemberToConversation={handleAddMemberToConversation}
+          onRenameConversation={handleRenameConversation}
         />
-        <Composer
-          selectedConversation={selectedConversation}
-          replyingTo={replyingTo}
-          setReplyingTo={setReplyingTo}
-          onSendMessage={handleSendMessage}
-          onSendPoll={handleSendPoll}
-          currentMembers={selectedConversation?.members || []}
-          currentUserId={CURRENT_USER_ID}
-        />
+        {selectedConversation?.type !== "broadcast" && (
+          <Composer
+            selectedConversation={selectedConversation}
+            replyingTo={replyingTo}
+            setReplyingTo={setReplyingTo}
+            onSendMessage={handleSendMessage}
+            onSendPoll={handleSendPoll}
+            currentMembers={selectedConversation?.members || []}
+            currentUserId={currentUserId}
+          />
+        )}
       </div>
     </div>
   );
