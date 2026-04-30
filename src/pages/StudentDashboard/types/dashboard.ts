@@ -1,6 +1,11 @@
 export interface DashboardUser {
   fullName: string;
   email: string;
+  phone: string | null;
+  profilePhotoUrl: string | null;
+  skills: string[];
+  theme: string;
+  language: string;
 }
 
 export interface DashboardStats {
@@ -66,7 +71,9 @@ export interface DashboardSummary {
   cohorts: DashboardCohort[];
   onDemand: DashboardOnDemand[];
   workshops: DashboardWorkshop[];
-  completed: Array<{ title: string; date: string }>;
+  completed: Array<{ id: string; title: string; date: string; courseId: string; programType: string }>;
   upcoming: Array<{ id: string; title: string; releaseDate: string; category: string }>;
   catalog: DashboardCatalogCourse[];
+  dynamicTasks: Array<{ id: number; text: string; checked: boolean }>;
+  urgentTasks: Array<{ id: number; time: string; text: string; type: 'quiz' | 'assignment' | 'workshop' }>;
 }

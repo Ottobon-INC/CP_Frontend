@@ -99,6 +99,7 @@ export default function ChatWindow({
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const prevConversationIdRef = useRef<string | null>(null);
   const prevMessagesCountRef = useRef(messages.length);
+  const prevLastMessageIdRef = useRef<string | null>(null);
   useEffect(() => {
     const isNewConversation = selectedConversation?.id !== prevConversationIdRef.current;
     const isNewMessage = messages.length > prevMessagesCountRef.current;
@@ -119,6 +120,24 @@ export default function ChatWindow({
     }
     prevMessagesCountRef.current = messages.length;
   }, [messages.length, selectedConversation?.id]);
+
+  // Auto-scroll on incoming messages (e.g., tutor messages) in active thread.
+  useEffect(() => {
+    const lastMessage = messages.length > 0 ? messages[messages.length - 1] : null;
+    if (!lastMessage) return;
+
+    const isNewLastMessage = lastMessage.id !== prevLastMessageIdRef.current;
+    prevLastMessageIdRef.current = lastMessage.id;
+
+    if (!isNewLastMessage) return;
+    if (lastMessage.sender_id === currentUserId) return;
+
+    requestAnimationFrame(() => {
+      if (messagesContainerRef.current) {
+        messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+      }
+    });
+  }, [messages, currentUserId]);
 
   const getSenderName = (senderId: string) => {
     const user = orgUsers.find((u) => u.id === senderId);
@@ -478,10 +497,10 @@ export default function ChatWindow({
                         {!msg.is_deleted && msg.attachments && msg.attachments.length > 0 && (
                           <div className="msg-message-attachments">
                             {msg.attachments.map((att) => {
-                              const resolvedUrl = att.drive_item_id 
-                                ? buildApiUrl(`/api/messaging/attachments/${att.drive_item_id}/content`) 
+                              const resolvedUrl = att.drive_item_id
+                                ? buildApiUrl(`/api/messaging/attachments/${att.drive_item_id}/content`)
                                 : buildApiUrl(att.url);
-                                
+
                               return isImageFile(att.file_name) && !resolvedUrl.includes('sharepoint.com') ? (
                                 <div key={att.id} className="msg-attachment-image-container">
                                   <img

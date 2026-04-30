@@ -8,20 +8,34 @@ import { useDashboardSummary } from "../../hooks/useDashboardSummary";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useMessaging } from "../../hooks/useMessaging";
-import { readStoredSession } from "@/utils/session";
+import { readStoredSession, subscribeToSession } from "@/utils/session";
 import { API_BASE_URL, buildApiUrl } from "@/lib/api";
 
+function extractParticipantId(entity: any): string | null {
+  if (!entity || typeof entity !== "object") return null;
+  const raw =
+    entity.id ??
+    entity.user_id ??
+    entity.userId ??
+    entity.user?.id ??
+    entity.user?.user_id ??
+    entity.user?.userId ??
+    null;
+  if (typeof raw !== "string") return null;
+  const value = raw.trim();
+  return value.length > 0 ? value : null;
+}
+
 export default function MessagingModule() {
-  const [session, setSession] = useState<any>(null);
+  const [session, setSession] = useState<any>(() => readStoredSession());
   const [selectedCohortId, setSelectedCohortId] = useState<string | null>(null);
   const [selectedCourseTitle, setSelectedCourseTitle] = useState<string | null>(null);
   
   useEffect(() => {
-    const init = async () => {
-      const s = await readStoredSession();
-      setSession(s);
-    };
-    init();
+    const unsubscribe = subscribeToSession((nextSession) => {
+      setSession(nextSession);
+    });
+    return unsubscribe;
   }, []);
 
   const { data: summary } = useDashboardSummary();
@@ -59,7 +73,10 @@ export default function MessagingModule() {
     },
     [courseGroups],
   );
-  const headers = session?.accessToken ? { Authorization: `Bearer ${session.accessToken}` } : undefined;
+  const headers = useMemo(
+    () => (session?.accessToken ? { Authorization: `Bearer ${session.accessToken}` } : undefined),
+    [session?.accessToken],
+  );
   const currentUserId = session?.userId ?? "";
 
   const [activeCategory, setActiveCategory] = useState("team");
@@ -86,7 +103,7 @@ export default function MessagingModule() {
     deleteMsgForMe,
     submitPollVoteInfo,
     clearSocketError,
-  } = useMessaging(selectedConversation?.id || null);
+  } = useMessaging(selectedConversation);
 
   // ── Fetch Org Users ──
   useEffect(() => {
@@ -112,6 +129,49 @@ export default function MessagingModule() {
     }
     return matchesCategory;
   });
+
+  const getDmParticipantKey = useCallback((conversation: Conversation | null | undefined) => {
+    if (!conversation || conversation.type !== "dm") return null;
+
+    const idsFromMembers = (conversation.members ?? [])
+      .map((member) => extractParticipantId(member))
+      .filter((id): id is string => Boolean(id));
+
+    if (idsFromMembers.length > 0) {
+      return Array.from(new Set(idsFromMembers)).sort().join("|");
+    }
+
+    const otherId = extractParticipantId(conversation.otherUser);
+    if (otherId && currentUserId) {
+      return [currentUserId, otherId].sort().join("|");
+    }
+
+    return null;
+  }, [currentUserId]);
+
+  useEffect(() => {
+    if (!selectedConversation) return;
+
+    const byId = conversations.find((conversation) => conversation.id === selectedConversation.id) ?? null;
+    if (byId) {
+      if (byId !== selectedConversation) {
+        setSelectedConversation(byId);
+      }
+      return;
+    }
+
+    if (selectedConversation.type !== "dm") return;
+
+    const selectedKey = getDmParticipantKey(selectedConversation);
+    if (!selectedKey) return;
+
+    const remapped = conversations.find(
+      (conversation) => conversation.type === "dm" && getDmParticipantKey(conversation) === selectedKey,
+    );
+    if (remapped && remapped.id !== selectedConversation.id) {
+      setSelectedConversation(remapped);
+    }
+  }, [conversations, selectedConversation, getDmParticipantKey]);
 
   const handleSelectConversation = useCallback((conv: Conversation) => {
     setSelectedConversation(conv);
