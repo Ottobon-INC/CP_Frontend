@@ -24,6 +24,7 @@ import CourseDetailsPage from "@/pages/CourseDetailsPage";
 import CohortPage from "@/pages/CohortPage";
 import OnDemandPage from "@/pages/OnDemandPage";
 import WorkshopPage from "@/pages/WorkshopPage";
+import WorkshopDetailsPage from "@/pages/WorkshopDetailsPage";
 import RegistrationPage from "@/pages/RegistrationPage";
 
 import MethodologyPage from "@/pages/MethodologyPage";
@@ -41,7 +42,7 @@ import DashboardMessages from "@/pages/StudentDashboard/pages/messaging/Messagin
 import { Certificates as DashboardCertificates } from "@/pages/StudentDashboard/pages/Certificates";
 import { Profile as DashboardProfile } from "@/pages/StudentDashboard/pages/Profile";
 import { LiveSessions as DashboardLiveSessions } from "@/pages/StudentDashboard/pages/LiveSessions";
-
+import { ThemeProvider } from "@/contexts/ThemeContext";
 import { DRIP_CSS } from "@/pages/StudentDashboard/constants/styles";
 
 function DashboardRoute({ component: Component }: { component: React.ComponentType }) {
@@ -93,6 +94,13 @@ function Router() {
       <Route path="/ondemand/:id/congrats" component={CongratsPage} />
       <Route path="/course/:id" component={CourseDetailsPage} />
       <Route path="/ondemand/:id" component={CourseDetailsPage} />
+      <Route path="/workshop/:id" component={WorkshopDetailsPage} />
+      <Route path="/workshop">
+        {() => {
+          window.location.replace("/our-courses/workshops");
+          return null;
+        }}
+      </Route>
 
       {/* Student Dashboard Routes - Unified into App.tsx */}
       <Route path="/student-dashboard">
@@ -202,7 +210,7 @@ function App({ isAuthenticated, user, setIsAuthenticated, setUser }: any) {
 
   return (
     <QueryClientProvider client={queryClient}>
-
+      <ThemeProvider>
         <TooltipProvider>
           <ScrollToTop />
           <Toaster />
@@ -230,7 +238,7 @@ function App({ isAuthenticated, user, setIsAuthenticated, setUser }: any) {
           )}
           <Router />
         </TooltipProvider>
-
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }
