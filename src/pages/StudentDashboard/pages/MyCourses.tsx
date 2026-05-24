@@ -27,15 +27,15 @@ export function MyCourses() {
     courseSlug: string | null;
     lastLessonSlug?: string | null;
     isEnrolled?: boolean;
+    programType?: 'cohort' | 'ondemand' | 'workshop' | 'catalog';
   }) => {
     if (!course.courseSlug) {
       return null;
     }
-    if (course.isEnrolled === false) {
-      return `/course/${course.courseSlug}`;
+    if (course.programType === 'ondemand') {
+      return `/ondemand/${course.courseSlug}`;
     }
-    const lessonSlug = course.lastLessonSlug || 'start';
-    return `/course/${course.courseSlug}/learn/${lessonSlug}`;
+    return `/course/${course.courseSlug}`;
   };
 
   const mappedCourses = useMemo(() => {
@@ -54,7 +54,8 @@ export function MyCourses() {
       btnText: 'Resume',
       courseSlug: c.courseSlug,
       lastLessonSlug: c.lastLessonSlug,
-      isEnrolled: true
+      isEnrolled: true,
+      programType: 'cohort' as const,
     }));
 
     const onDemand = summary.onDemand.map(od => ({
@@ -68,7 +69,8 @@ export function MyCourses() {
       btnText: 'Resume',
       courseSlug: od.courseSlug,
       lastLessonSlug: od.lastLessonSlug,
-      isEnrolled: true
+      isEnrolled: true,
+      programType: 'ondemand' as const,
     }));
 
     const workshops = summary.workshops.map(w => ({
@@ -82,7 +84,8 @@ export function MyCourses() {
       btnText: 'View',
       courseSlug: null,
       lastLessonSlug: null,
-      isEnrolled: true
+      isEnrolled: true,
+      programType: 'workshop' as const,
     }));
 
     const catalog = summary.catalog.map(c => ({
@@ -96,7 +99,8 @@ export function MyCourses() {
       btnText: 'Enroll Now',
       courseSlug: c.courseSlug,
       lastLessonSlug: null,
-      isEnrolled: false
+      isEnrolled: false,
+      programType: 'catalog' as const,
     }));
 
     return [...cohorts, ...onDemand, ...workshops];
@@ -318,11 +322,6 @@ export function MyCourses() {
               >
                 Join Course
               </button>
-            </div>
-          )}
-          {activeFilter === 'Cohorts' && (
-            <div className="flex flex-col gap-6 mt-6">
-              <CohortTopPerformer />
             </div>
           )}
         </aside>

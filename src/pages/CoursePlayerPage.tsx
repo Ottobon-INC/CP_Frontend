@@ -30,6 +30,8 @@ import type { StoredSession } from "@/types/session";
 import SimulationExercise, { SimulationPayload } from "@/components/SimulationExercise";
 import ColdCalling from "@/components/ColdCalling";
 import CohortProjectModal, { type CohortProjectPayload } from "@/components/CohortProjectModal";
+import { ModuleAssignmentsView } from "./StudentDashboard/components/ModuleAssignmentsView";
+import { useLearnerAssignments, type Assignment } from "./StudentDashboard/hooks/useLearnerAssignments";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
@@ -72,6 +74,54 @@ const normalizeVideoUrl = (rawUrl?: string | null) => {
   } catch {
     return trimmed;
   }
+};
+
+const isYouTubeVideoUrl = (url?: string | null) => {
+  if (!url) return false;
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return host.includes("youtube.com") || host === "youtu.be";
+  } catch {
+    return false;
+  }
+};
+
+const getYouTubeVideoId = (url?: string | null) => {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.toLowerCase();
+    if (host === "youtu.be") {
+      const id = parsed.pathname.replace(/^\/+/, "").trim();
+      return id || null;
+    }
+    if (host.includes("youtube.com")) {
+      if (parsed.pathname.startsWith("/embed/")) {
+        const id = parsed.pathname.split("/").pop()?.trim();
+        return id || null;
+      }
+      if (parsed.pathname === "/watch") {
+        const id = parsed.searchParams.get("v")?.trim();
+        return id || null;
+      }
+      if (parsed.pathname.startsWith("/shorts/")) {
+        const id = parsed.pathname.split("/").pop()?.trim();
+        return id || null;
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+};
+
+const formatCourseKeyLabel = (value?: string | null) => {
+  if (!value) return "Course Content";
+  return value
+    .split("-")
+    .filter(Boolean)
+    .map((part) => (part.length <= 3 ? part.toUpperCase() : part.charAt(0).toUpperCase() + part.slice(1)))
+    .join(" ");
 };
 
 type ContentBlock = {
@@ -225,6 +275,31 @@ interface QuizAttemptResult {
   passed: boolean;
   thresholdPercent: number;
 }
+
+type ModuleAssignmentProgress = {
+  total: number;
+  submitted: number;
+  complete: boolean;
+};
+
+type ModuleApprovalProgress = {
+  total: number;
+  approved: number;
+  complete: boolean;
+};
+
+const MODULE_UNLOCK_COMPLETED_STATUSES = new Set([
+  "approved",
+  "reviewed"
+]);
+
+const isAssignmentCompletedForUnlock = (assignment: Assignment) =>
+  MODULE_UNLOCK_COMPLETED_STATUSES.has(assignment.status);
+
+const isAssignmentApprovedForProgress = (assignment: Assignment) => assignment.status === "approved";
+
+const isModuleFinalAssessmentSection = (section: QuizSection) =>
+  /final\s+assessment/i.test(section.title ?? "");
 
 type InlineQuizPhase = "intro" | "loading" | "active" | "submitting" | "result" | "error";
 
@@ -596,6 +671,8 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
   const [sections, setSections] = useState<QuizSection[]>([]);
   const [sectionsLoaded, setSectionsLoaded] = useState(false);
   const [courseProgress, setCourseProgress] = useState(0);
+  const [courseTitle, setCourseTitle] = useState<string>("");
+  const [activatedVideos, setActivatedVideos] = useState<Record<string, true>>({});
   const isComplete = useMemo(() => Math.round(courseProgress) >= 100, [courseProgress]);
   const [activeSlug, setActiveSlug] = useState<string | null>(lessonSlugParam ?? null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -617,6 +694,7 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
   const [ttsText, setTtsText] = useState("");
   const suppressResumeCacheWriteRef = useRef(false);
   const resumeWriteEnabledRef = useRef(false);
+  const moduleQuizBootstrapRef = useRef<string | null>(null);
   const [passedQuizzes, setPassedQuizzes] = useState<Set<string>>(new Set());
 
   // Video playback state
@@ -704,6 +782,188 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
     assessmentId: string;
   } | null>(null);
 
+  const [isAssignmentMode, setIsAssignmentMode] = useState(false);
+  const [activeAssignmentModule, setActiveAssignmentModule] = useState<number | null>(null);
+  const learnerAssignmentsQuery = useLearnerAssignments({
+    enabled: Boolean(sessionHydrated && session?.accessToken),
+  });
+
+  const courseIdForAssignments = useMemo(() => lessons[0]?.courseId ?? null, [lessons]);
+  const assignmentLockDataReady = learnerAssignmentsQuery.isSuccess;
+  const courseAssignments = useMemo(() => {
+    const assignments = learnerAssignmentsQuery.data?.assignments ?? [];
+    if (!courseIdForAssignments && !courseKey) {
+      return [];
+    }
+    return assignments.filter((assignment) => {
+      const courseMatches =
+        (courseIdForAssignments && assignment.courseId === courseIdForAssignments) ||
+        (courseKey && assignment.courseId === courseKey);
+      return Boolean(courseMatches) && assignment.programType === programType;
+    });
+  }, [courseIdForAssignments, courseKey, learnerAssignmentsQuery.data?.assignments, programType]);
+
+  const courseModuleNumbers = useMemo(
+    () =>
+      Array.from(new Set(lessons.map((lesson) => lesson.moduleNo).filter((moduleNo) => moduleNo > 0))).sort(
+        (a, b) => a - b,
+      ),
+    [lessons],
+  );
+
+  const assignmentProgressByModule = useMemo(() => {
+    const progressByModule = new Map<number, ModuleAssignmentProgress>();
+    courseModuleNumbers.forEach((moduleNo) => {
+      progressByModule.set(moduleNo, {
+        total: 0,
+        submitted: 0,
+        complete: assignmentLockDataReady,
+      });
+    });
+
+    if (!assignmentLockDataReady) {
+      return progressByModule;
+    }
+
+    courseAssignments.forEach((assignment) => {
+      if (!Number.isFinite(assignment.moduleNo) || assignment.moduleNo <= 0) {
+        return;
+      }
+      const current =
+        progressByModule.get(assignment.moduleNo) ?? {
+          total: 0,
+          submitted: 0,
+          complete: false,
+        };
+      progressByModule.set(assignment.moduleNo, {
+        total: current.total + 1,
+        submitted: current.submitted + (isAssignmentCompletedForUnlock(assignment) ? 1 : 0),
+        complete: false,
+      });
+    });
+
+    progressByModule.forEach((progress, moduleNo) => {
+      progressByModule.set(moduleNo, {
+        ...progress,
+        complete: progress.total > 0 && progress.submitted >= progress.total,
+      });
+    });
+
+    return progressByModule;
+  }, [assignmentLockDataReady, courseAssignments, courseModuleNumbers]);
+
+  const assignmentApprovalProgressByModule = useMemo(() => {
+    const progressByModule = new Map<number, ModuleApprovalProgress>();
+    courseModuleNumbers.forEach((moduleNo) => {
+      progressByModule.set(moduleNo, {
+        total: 0,
+        approved: 0,
+        complete: false,
+      });
+    });
+
+    if (!assignmentLockDataReady) {
+      return progressByModule;
+    }
+
+    courseAssignments.forEach((assignment) => {
+      if (!Number.isFinite(assignment.moduleNo) || assignment.moduleNo <= 0) {
+        return;
+      }
+      const current =
+        progressByModule.get(assignment.moduleNo) ?? {
+          total: 0,
+          approved: 0,
+          complete: false,
+        };
+      progressByModule.set(assignment.moduleNo, {
+        total: current.total + 1,
+        approved: current.approved + (isAssignmentApprovedForProgress(assignment) ? 1 : 0),
+        complete: false,
+      });
+    });
+
+    progressByModule.forEach((progress, moduleNo) => {
+      progressByModule.set(moduleNo, {
+        ...progress,
+        complete: progress.total > 0 && progress.approved >= progress.total,
+      });
+    });
+
+    return progressByModule;
+  }, [assignmentLockDataReady, courseAssignments, courseModuleNumbers]);
+
+  const finalAssessmentTopicNumberByModule = useMemo(() => {
+    const topicNumberByModule = new Map<number, number>();
+    lessons.forEach((lesson) => {
+      if (lesson.moduleNo <= 0 || !/final\s+assessment/i.test(lesson.topicName ?? "")) {
+        return;
+      }
+      topicNumberByModule.set(lesson.moduleNo, lesson.topicNumber);
+    });
+    return topicNumberByModule;
+  }, [lessons]);
+
+  const finalAssessmentPassedByModule = useMemo(() => {
+    const passedByModule = new Map<number, boolean>();
+    courseModuleNumbers.forEach((moduleNo) => {
+      passedByModule.set(moduleNo, false);
+    });
+
+    sections.forEach((section) => {
+      const finalTopicNumber = finalAssessmentTopicNumberByModule.get(section.moduleNo);
+      const isFinalAssessment =
+        isModuleFinalAssessmentSection(section) ||
+        (finalTopicNumber !== undefined && section.topicNumber === finalTopicNumber);
+      if (section.moduleNo <= 0 || !isFinalAssessment) {
+        return;
+      }
+      if (section.passed) {
+        passedByModule.set(section.moduleNo, true);
+      }
+    });
+
+    return passedByModule;
+  }, [courseModuleNumbers, finalAssessmentTopicNumberByModule, sections]);
+
+  const moduleCompletionById = useMemo(() => {
+    const completionById = new Map<number, boolean>();
+    courseModuleNumbers.forEach((moduleNo) => {
+      const finalAssessmentPassed = finalAssessmentPassedByModule.get(moduleNo) === true;
+      const assignmentsApproved = assignmentApprovalProgressByModule.get(moduleNo)?.complete === true;
+      completionById.set(moduleNo, finalAssessmentPassed && assignmentsApproved);
+    });
+    return completionById;
+  }, [assignmentApprovalProgressByModule, courseModuleNumbers, finalAssessmentPassedByModule]);
+
+  const moduleUnlockById = useMemo(() => {
+    const unlockById = new Map<number, boolean>();
+    let previousModulesComplete = true;
+
+    courseModuleNumbers.forEach((moduleNo) => {
+      const unlocked = moduleNo <= 1 || previousModulesComplete;
+      unlockById.set(moduleNo, unlocked);
+      const progress = assignmentProgressByModule.get(moduleNo);
+      const moduleComplete = assignmentLockDataReady ? (progress?.complete ?? true) : false;
+      previousModulesComplete = previousModulesComplete && moduleComplete;
+    });
+
+    return unlockById;
+  }, [assignmentLockDataReady, assignmentProgressByModule, courseModuleNumbers]);
+
+  const isModuleUnlocked = useCallback(
+    (moduleNo: number | null | undefined) => {
+      if (moduleNo === null || moduleNo === undefined) {
+        return true;
+      }
+      if (moduleNo <= 1) {
+        return true;
+      }
+      return moduleUnlockById.get(moduleNo) === true;
+    },
+    [moduleUnlockById],
+  );
+
   const dragInfo = useRef<{
     isDragging: boolean;
     widget: "study" | "chat" | "notes" | null;
@@ -727,8 +987,14 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
   });
 
   const activeLesson = useMemo(
-    () => lessons.find((l) => l.slug === activeSlug) ?? lessons[0],
-    [lessons, activeSlug],
+    () => {
+      const requestedLesson = lessons.find((lesson) => lesson.slug === activeSlug) ?? null;
+      if (requestedLesson && isModuleUnlocked(requestedLesson.moduleNo)) {
+        return requestedLesson;
+      }
+      return lessons.find((lesson) => isModuleUnlocked(lesson.moduleNo)) ?? lessons[0];
+    },
+    [lessons, activeSlug, isModuleUnlocked],
   );
   const emitTelemetry = useCallback(
     (
@@ -946,6 +1212,7 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
   const fetchTopics = useCallback(async () => {
     if (!courseKey) {
       setLessons([]);
+      setCourseTitle("");
       setTopicsLoaded(true);
       return;
     }
@@ -958,6 +1225,7 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
       const freshSession = await ensureSessionFresh(storedSession);
       if (!freshSession?.accessToken) {
         setLessons([]);
+        setCourseTitle("");
         setLocation(`${learnBasePath}/${courseKey}`);
         return;
       }
@@ -976,6 +1244,7 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
         throw new Error("Failed to load topics");
       }
       const data = await res.json();
+      setCourseTitle(typeof data?.courseTitle === "string" ? data.courseTitle.trim() : "");
       const mapped: Lesson[] = (data.topics ?? []).map((t: any) => ({
         topicId: t.topicId,
         courseId: t.courseId,
@@ -994,6 +1263,7 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
       setLessons(sorted);
     } catch (error) {
       setLessons([]);
+      setCourseTitle("");
       toast({
         variant: "destructive",
         title: "Unable to load course",
@@ -1043,7 +1313,7 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
     setShouldRefreshStarterBatch(true);
   }, [starterSuggestions]);
 
-  // Lock system disabled: keep sections empty and progress at 0
+  // Quiz sections are loaded for assessment rendering.
   const fetchSections = useCallback(async () => {
     if (!courseKey || !session?.accessToken) {
       setSections([]);
@@ -1075,17 +1345,26 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
         moduleWindowEndsAt: s.moduleWindowEndsAt ?? null,
       }));
       setSections(list);
-      const total = list.length;
-      const passed = list.filter((s) => s.passed).length;
-      setCourseProgress(total > 0 ? Math.round((passed / total) * 100) : 0);
     } catch (error) {
       console.error("Failed to load quiz sections", error);
       setSections([]);
-      setCourseProgress(0);
     } finally {
       setSectionsLoaded(true);
     }
   }, [courseKey, session?.accessToken]);
+
+  useEffect(() => {
+    if (!topicsLoaded || !sectionsLoaded || courseModuleNumbers.length === 0) {
+      setCourseProgress(0);
+      return;
+    }
+    const passedModules = new Set(
+      sections
+        .filter((section) => section.moduleNo > 0 && section.passed)
+        .map((section) => section.moduleNo),
+    );
+    setCourseProgress(Math.round((passedModules.size / courseModuleNumbers.length) * 100));
+  }, [courseModuleNumbers, sections, sectionsLoaded, topicsLoaded]);
 
   const fetchCohortProject = useCallback(async () => {
     if (!isCohortProgram) {
@@ -1178,33 +1457,55 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
           passed: true,
         };
       }
+      const moduleUnlocked = isModuleUnlocked(moduleNo);
+      const assignmentProgress = assignmentProgressByModule.get(moduleNo);
       const sectionForModule = sections
         .filter((s) => s.moduleNo === moduleNo)
         .sort((a, b) => {
           if (a.topicNumber !== b.topicNumber) return a.topicNumber - b.topicNumber;
           return a.topicPairIndex - b.topicPairIndex;
         });
-      const modulePassed = sectionForModule.length === 0 || sectionForModule.every((s) => s.passed);
+      const modulePassed = moduleCompletionById.get(moduleNo) === true;
       const sectionsByTopicNumber = new Map<number, QuizSection[]>();
       sectionForModule.forEach((section) => {
         const existing = sectionsByTopicNumber.get(section.topicNumber) ?? [];
         existing.push(section);
         sectionsByTopicNumber.set(section.topicNumber, existing);
       });
+      const consumedSectionIds = new Set<string>();
+      const moduleFinalLessonIndex = sortedLessons.findIndex((lesson) =>
+        /module\s+\d+\s+final\s+assessment/i.test(lesson.topicName),
+      );
 
-      sortedLessons.forEach((lesson) => {
-        submodules.push({
-          id: lesson.topicId,
-          title: lesson.topicName,
-          type: "video",
-          slug: lesson.slug,
-          moduleNo: lesson.moduleNo,
-          topicNumber: lesson.topicNumber,
-          unlocked: true,
-        });
-        const attachedSections = (sectionsByTopicNumber.get(lesson.topicNumber) ?? []).sort(
-          (a, b) => a.topicPairIndex - b.topicPairIndex,
-        );
+      sortedLessons.forEach((lesson, lessonIndex) => {
+        const directSections = (sectionsByTopicNumber.get(lesson.topicNumber) ?? [])
+          .filter((section) => !consumedSectionIds.has(section.assessmentId))
+          .sort((a, b) => a.topicPairIndex - b.topicPairIndex);
+        const isModuleFinalLesson = /module\s+\d+\s+final\s+assessment/i.test(lesson.topicName);
+        const isDesignatedModuleFinalHost = isModuleFinalLesson && moduleFinalLessonIndex === lessonIndex;
+        const fallbackSectionsForModuleFinal = isDesignatedModuleFinalHost
+          ? sectionForModule
+            .filter((section) => !consumedSectionIds.has(section.assessmentId))
+            .sort((a, b) => {
+              if (a.topicNumber !== b.topicNumber) return a.topicNumber - b.topicNumber;
+              return a.topicPairIndex - b.topicPairIndex;
+            })
+          : [];
+        const attachedSections = directSections.length > 0 ? directSections : fallbackSectionsForModuleFinal;
+        attachedSections.forEach((section) => consumedSectionIds.add(section.assessmentId));
+        const shouldSuppressLessonNode = isModuleFinalLesson && attachedSections.length > 0;
+
+        if (!shouldSuppressLessonNode) {
+          submodules.push({
+            id: lesson.topicId,
+            title: lesson.topicName,
+            type: "video",
+            slug: lesson.slug,
+            moduleNo: lesson.moduleNo,
+            topicNumber: lesson.topicNumber,
+            unlocked: moduleUnlocked,
+          });
+        }
         attachedSections.forEach((section) => {
           submodules.push({
             id: `quiz-${section.assessmentId}`,
@@ -1214,7 +1515,7 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
             assessmentId: section.assessmentId,
             topicPairIndex: section.topicPairIndex,
             topicNumber: section.topicNumber,
-            unlocked: section.unlocked,
+            unlocked: moduleUnlocked,
           });
         });
       });
@@ -1223,12 +1524,27 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
         id: moduleNo,
         title: sortedLessons[0]?.moduleName ?? `Module ${moduleNo}`,
         submodules,
-        unlocked: true,
+        unlocked: moduleUnlocked,
         passed: modulePassed,
       };
     });
     setModules(newModules);
-  }, [lessons, sections]);
+  }, [isModuleUnlocked, lessons, moduleCompletionById, sections]);
+
+  useEffect(() => {
+    setExpandedModules((prev) => {
+      const next = prev.filter((moduleId) => moduleId === 0 || isModuleUnlocked(moduleId));
+      return next.length === prev.length ? prev : next;
+    });
+  }, [isModuleUnlocked]);
+
+  useEffect(() => {
+    if (!isAssignmentMode || activeAssignmentModule === null || isModuleUnlocked(activeAssignmentModule)) {
+      return;
+    }
+    setIsAssignmentMode(false);
+    setActiveAssignmentModule(null);
+  }, [activeAssignmentModule, isAssignmentMode, isModuleUnlocked]);
 
   useEffect(() => {
     void fetchTopics();
@@ -1268,9 +1584,9 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
       return navNode.unlocked !== false;
     };
 
-    let targetLesson = explicitLesson;
+    let targetLesson = explicitLesson && isLessonUnlocked(explicitLesson) ? explicitLesson : null;
 
-    if (explicitLesson) {
+    if (explicitLesson && isLessonUnlocked(explicitLesson)) {
       resumeWriteEnabledRef.current = true;
     }
 
@@ -1595,6 +1911,13 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
     }, 3000);
   };
   const handleSubmoduleSelect = (sub: SubModule) => {
+    if (sub.unlocked === false || !isModuleUnlocked(sub.moduleNo)) {
+      toast({
+        title: "Module locked",
+        description: "Submit all assignments in the previous module to unlock this module.",
+      });
+      return;
+    }
     if (sub.type === "quiz") {
       emitTelemetry(
         "lesson.quiz_select",
@@ -1609,7 +1932,6 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
         { moduleNo: sub.moduleNo, topicId: targetLesson?.topicId ?? null, courseId: targetLesson?.courseId ?? null },
       );
     }
-    if (isQuizMode && quizPhase !== "result" && sub.type !== "quiz") return;
     if (sub.type === "quiz") {
       if (!sub.assessmentId) {
         toast({
@@ -1619,10 +1941,30 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
         });
         return;
       }
+      const mappedLesson = lessons.find(
+        (lesson) => lesson.moduleNo === sub.moduleNo && lesson.topicNumber === sub.topicNumber,
+      );
+      if (mappedLesson?.slug) {
+        resumeWriteEnabledRef.current = true;
+        setActiveSlug(mappedLesson.slug);
+        setLocation(`${learnBasePath}/${courseKey}/learn/${mappedLesson.slug}`);
+      }
+      setIsReadingMode(false);
+      setInlineQuizStateByKey({});
+      setChatOpen(false);
+      setNotesOpen(false);
+      setStudyWidgetOpen(false);
       void handleStartQuiz(sub.moduleNo, sub.assessmentId, sub.topicPairIndex ?? 1);
     } else if (sub.slug) {
       setIsQuizMode(false);
+      setIsAssignmentMode(false);
       setQuizPhase("intro");
+      setSelectedSection(null);
+      setQuizQuestions([]);
+      setQuizAttemptId(null);
+      setQuizResult(null);
+      setAnswers({});
+      setQuizTimer(60);
       resumeWriteEnabledRef.current = true;
       setActiveSlug(sub.slug);
       setLocation(`${learnBasePath}/${courseKey}/learn/${sub.slug}`);
@@ -1633,6 +1975,13 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
 
   const handleStartQuiz = async (moduleNo: number, assessmentId: string, topicPairIndex: number) => {
     if (!courseKey) return;
+    if (!isModuleUnlocked(moduleNo)) {
+      toast({
+        title: "Module locked",
+        description: "Submit all assignments in the previous module to unlock this module.",
+      });
+      return;
+    }
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (session?.accessToken) headers.Authorization = `Bearer ${session.accessToken}`;
     emitTelemetry("quiz.start", { topicPairIndex, assessmentId }, { moduleNo, topicId: null });
@@ -1651,6 +2000,7 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
       setAnswers({});
       setQuizResult(null);
       setIsQuizMode(true);
+      setIsAssignmentMode(false);
       setQuizPhase("intro");
       setQuizTimer(150);
       setSidebarOpen(false);
@@ -1665,6 +2015,58 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
       });
     }
   };
+
+  useEffect(() => {
+    if (!sessionHydrated || !topicsLoaded || !sectionsLoaded || !courseKey) return;
+    if (isQuizMode || !activeLesson) return;
+
+    const normalizedParam = normalizeSlugValue(lessonSlugParam);
+    const normalizedActive = normalizeSlugValue(activeLesson.slug);
+    if (!normalizedParam || normalizedParam !== normalizedActive) return;
+
+    const isModuleFinalLesson = /module\s+\d+\s+final\s+assessment/i.test(activeLesson.topicName);
+    if (!isModuleFinalLesson) return;
+    if (!isModuleUnlocked(activeLesson.moduleNo)) return;
+
+    const bootstrapKey = `${courseKey}:${normalizedActive}`;
+    if (moduleQuizBootstrapRef.current === bootstrapKey) return;
+
+    const exactSection = sections
+      .filter(
+        (section) =>
+          section.moduleNo === activeLesson.moduleNo &&
+          section.topicNumber === activeLesson.topicNumber,
+      )
+      .sort((a, b) => a.topicPairIndex - b.topicPairIndex)[0];
+
+    const fallbackSection = sections
+      .filter((section) => section.moduleNo === activeLesson.moduleNo)
+      .sort((a, b) => {
+        if (a.topicNumber !== b.topicNumber) return a.topicNumber - b.topicNumber;
+        return a.topicPairIndex - b.topicPairIndex;
+      })[0];
+
+    const targetSection = exactSection ?? fallbackSection;
+    if (!targetSection?.assessmentId) return;
+
+    moduleQuizBootstrapRef.current = bootstrapKey;
+    void handleStartQuiz(
+      activeLesson.moduleNo,
+      targetSection.assessmentId,
+      targetSection.topicPairIndex ?? 1,
+    );
+  }, [
+    sessionHydrated,
+    topicsLoaded,
+    sectionsLoaded,
+    courseKey,
+    isQuizMode,
+    activeLesson,
+    lessonSlugParam,
+    sections,
+    handleStartQuiz,
+    isModuleUnlocked,
+  ]);
 
   const handleSubmitQuiz = async () => {
     if (!quizAttemptId) return;
@@ -1747,6 +2149,7 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
       setInlineQuizState(runtimeKey, {
         assessmentId: assessmentId ?? "",
         mode: assessmentId ? "remote" : "local",
+        correctOptionByQuestionId: {}, // <-- Add this line to satisfy the TypeScript compiler
         phase: "loading",
         attemptId: null,
         questions: [],
@@ -1754,6 +2157,7 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
         result: null,
         errorMessage: null,
       });
+
 
       emitTelemetry(
         "quiz.start",
@@ -2337,7 +2741,6 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
     }),
     [],
   );
-  const blockVideoMaxHeightClass = isCompactLayout ? "max-h-[40vh]" : "max-h-[65vh]";
   const scrollMainToTop = useCallback((behavior: ScrollBehavior = "smooth") => {
     const container = contentScrollRef.current;
     if (container) {
@@ -2721,22 +3124,61 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
             typeof data?.title === "string" && data.title.trim()
               ? data.title.trim()
               : activeLesson?.topicName ?? "Lesson video";
-          const videoWrapperClass = `transition-[max-height,opacity] duration-300 ease-in-out overflow-hidden ${isReadingMode
-            ? "max-h-0 opacity-0 pointer-events-none"
-            : `${blockVideoMaxHeightClass} opacity-100`
+          const isYoutubeVideo = isYouTubeVideoUrl(videoUrl);
+          const youtubeVideoId = getYouTubeVideoId(videoUrl);
+          const videoActivationKey = `block:${key}:${videoUrl}`;
+          const isVideoActivated = Boolean(activatedVideos[videoActivationKey]);
+          const videoWrapperClass = `transition-[max-height,opacity] duration-300 ease-in-out ${isReadingMode
+            ? "max-h-0 opacity-0 pointer-events-none overflow-hidden"
+            : "max-h-none opacity-100 overflow-visible"
             }`;
           output.push(
             <div key={key} className={videoWrapperClass} style={isReadingMode ? { marginTop: 0 } : undefined}>
               <div className="space-y-2">
                 <div className="rounded-3xl border border-[#e8e1d8] bg-white shadow-sm overflow-hidden">
-                  <div className="w-full bg-black aspect-video">
-                    <iframe
-                      className="w-full h-full"
-                      src={videoUrl}
-                      title={title}
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                    />
+                  <div className="w-full bg-black aspect-video rounded-[inherit] overflow-hidden">
+                    {isYoutubeVideo && youtubeVideoId && !isVideoActivated ? (
+                      <button
+                        type="button"
+                        onClick={() => setActivatedVideos((prev) => ({ ...prev, [videoActivationKey]: true }))}
+                        className="relative w-full h-full block rounded-[inherit] overflow-hidden"
+                        aria-label={`Play ${title}`}
+                      >
+                        <span
+                          className="block w-full h-full rounded-[inherit] bg-black"
+                          style={{
+                            backgroundImage: `url("https://i.ytimg.com/vi/${youtubeVideoId}/maxresdefault.jpg"), url("https://i.ytimg.com/vi/${youtubeVideoId}/hqdefault.jpg")`,
+                            backgroundSize: "contain",
+                            backgroundPosition: "center",
+                            backgroundRepeat: "no-repeat",
+                          }}
+                          aria-label={title}
+                        />
+                        <span className="absolute inset-0 flex items-center justify-center">
+                          <span className="w-16 h-16 rounded-full bg-white/90 text-[#bf2f1f] flex items-center justify-center shadow-xl">
+                            <Play size={28} fill="currentColor" />
+                          </span>
+                        </span>
+                      </button>
+                    ) : isYoutubeVideo ? (
+                      <iframe
+                        className="w-full h-full block border-0 rounded-[inherit] overflow-hidden"
+                        src={videoUrl}
+                        title={title}
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      />
+                    ) : (
+                      <video
+                        className="w-full h-full block rounded-[inherit] overflow-hidden"
+                        controls
+                        playsInline
+                        preload="metadata"
+                        title={title}
+                      >
+                        <source src={videoUrl} />
+                      </video>
+                    )}
                   </div>
                 </div>
                 {variant === "main" && firstBlockIsVideo && firstTextBlockIndex !== null && index === 0 && (
@@ -2855,11 +3297,10 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
                                 type="button"
                                 key={option.optionId}
                                 onClick={() => selectInlineQuizAnswer(runtimeKey, question.questionId, option.optionId)}
-                                className={`rounded-lg border px-3 py-2 text-left text-sm transition ${
-                                  selected
-                                    ? "border-[#bf2f1f] bg-[#fff1ee] text-[#000000]"
-                                    : "border-[#e5e7eb] bg-white hover:border-[#bf2f1f]/60"
-                                }`}
+                                className={`rounded-lg border px-3 py-2 text-left text-sm transition ${selected
+                                  ? "border-[#bf2f1f] bg-[#fff1ee] text-[#000000]"
+                                  : "border-[#e5e7eb] bg-white hover:border-[#bf2f1f]/60"
+                                  }`}
                               >
                                 {option.text}
                               </button>
@@ -2971,7 +3412,7 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
       activeLesson?.moduleNo,
       activeLesson?.topicId,
       activeLesson?.topicName,
-      blockVideoMaxHeightClass,
+      activatedVideos,
       firstBlockIsVideo,
       firstTextBlockIndex,
       inlineQuizStateByKey,
@@ -2983,6 +3424,41 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
     ],
   );
   const activeVideoUrl = activeLesson?.videoUrl ?? "";
+  const stageKey = isQuizMode
+    ? `quiz:${selectedSection?.assessmentId ?? "none"}:${selectedSection?.moduleNo ?? "none"}:${selectedSection?.topicPairIndex ?? "none"}`
+    : "lesson";
+  const normalizedRouteLesson = normalizeSlugValue(lessonSlugParam);
+  const normalizedActiveLesson = normalizeSlugValue(activeLesson?.slug ?? "");
+  const isRouteBoundToActiveLesson = normalizedRouteLesson.length > 0 && normalizedRouteLesson === normalizedActiveLesson;
+  const isRouteModuleFinalLesson =
+    isRouteBoundToActiveLesson && /module\s+\d+\s+final\s+assessment/i.test(activeLesson?.topicName ?? "");
+  const routeModuleSection = isRouteModuleFinalLesson
+    ? sections
+      .filter(
+        (section) =>
+          section.moduleNo === activeLesson?.moduleNo &&
+          section.topicNumber === activeLesson?.topicNumber,
+      )
+      .sort((a, b) => a.topicPairIndex - b.topicPairIndex)[0] ??
+    sections
+      .filter((section) => section.moduleNo === activeLesson?.moduleNo)
+      .sort((a, b) => {
+        if (a.topicNumber !== b.topicNumber) return a.topicNumber - b.topicNumber;
+        return a.topicPairIndex - b.topicPairIndex;
+      })[0]
+    : null;
+  const routeBootstrapKey = isRouteBoundToActiveLesson && courseKey ? `${courseKey}:${normalizedActiveLesson}` : null;
+  const isBootstrappingModuleQuiz =
+    Boolean(
+      sessionHydrated &&
+      topicsLoaded &&
+      sectionsLoaded &&
+      routeModuleSection?.assessmentId &&
+      routeBootstrapKey &&
+      moduleQuizBootstrapRef.current !== routeBootstrapKey &&
+      !isQuizMode,
+    );
+  const shouldHoldModuleFinalRouteInQuizShell = isBootstrappingModuleQuiz;
   const rootClassName = `${isCompactLayout ? "flex flex-col" : "flex"} h-screen bg-[#000000] text-[#f8f1e6] overflow-hidden font-sans relative`;
   const videoHeightClass = isCompactLayout ? "w-full h-[40vh]" : "w-full h-[65vh]";
   const studySectionPadding = isCompactLayout ? "px-4 py-6 sm:px-6" : "p-8 md:p-12";
@@ -2992,6 +3468,7 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
     } border-r border-[#4a4845]/70 shadow-2xl z-40`
     : `${sidebarBaseClasses} shrink-0 relative z-30 ${isFullScreen ? "absolute h-full z-40" : ""} ${!isControlsVisible && isFullScreen ? "opacity-0 pointer-events-none" : "opacity-100"
     } ${sidebarOpen ? "w-80 border-r border-[#4a4845]" : "w-12 border-r border-[#4a4845]"}`;
+  const sidebarHeaderTitle = courseTitle || formatCourseKeyLabel(courseKey);
 
   return (
     <div
@@ -3012,7 +3489,7 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
       {/* Sidebar */}
       <div className={sidebarClassName}>
         <div className="h-14 flex items-center justify-between px-3 border-b border-[#4a4845]/50 bg-white/5 min-w-[3rem]">
-          {sidebarOpen && <h2 className="font-bold text-sm text-[#f8f1e6] truncate">Course Content</h2>}
+          {sidebarOpen && <h2 className="font-bold text-sm text-[#f8f1e6] truncate">{sidebarHeaderTitle}</h2>}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className="p-1 hover:bg-[#4a4845]/30 rounded text-[#f8f1e6]"
@@ -3041,48 +3518,101 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
         <div className="flex-1 overflow-y-auto overflow-x-hidden p-2 space-y-4">
           {modules.map((module) => {
             const isExpanded = expandedModules.includes(module.id);
+            const moduleLocked = module.id > 0 && module.unlocked === false;
             return (
               <div key={module.id} className={!sidebarOpen ? "hidden" : ""}>
                 <div
-                  className="flex items-center justify-between cursor-pointer p-2 hover:bg-white/5 rounded group"
-                  onClick={() =>
+                  className={`flex items-center justify-between p-2 rounded group transition ${moduleLocked
+                    ? "cursor-not-allowed opacity-50"
+                    : "cursor-pointer hover:bg-white/5"
+                    }`}
+                  aria-disabled={moduleLocked}
+                  onClick={() => {
+                    if (moduleLocked) {
+                      toast({
+                        title: "Module locked",
+                        description: "Submit all assignments in the previous module to unlock this module.",
+                      });
+                      return;
+                    }
                     setExpandedModules((prev) =>
                       prev.includes(module.id) ? prev.filter((m) => m !== module.id) : [...prev, module.id],
-                    )
-                  }
+                    );
+                  }}
                 >
-                  <div className="text-[10px] uppercase tracking-wider text-white font-bold transition-colors whitespace-normal break-words">
+                  <div className="text-[10px] uppercase tracking-wider text-white font-bold transition-colors whitespace-normal break-words flex items-center gap-2">
+                    {moduleLocked && <Lock size={12} className="flex-shrink-0 text-[#f8f1e6]/70" />}
                     {module.id > 0 ? `Module ${module.id}: ${module.title}` : module.title}
                   </div>
                   <ChevronDown
                     size={14}
-                    className={`text-white/70 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}
+                    className={`text-white/70 transition-transform duration-200 ${isExpanded && !moduleLocked ? "rotate-180" : ""}`}
                   />
                 </div>
 
                 <div
-                  className={`space-y-1 transition-all duration-300 ${isExpanded ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0 overflow-hidden"
+                  className={`space-y-1 transition-all duration-300 ${isExpanded && !moduleLocked ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0 overflow-hidden"
                     }`}
                 >
                   {module.submodules?.map((sub) => {
-                    const active = sub.slug ? sub.slug === activeLesson?.slug : false;
+                    const active = sub.type === "quiz"
+                      ? Boolean(
+                        !isAssignmentMode &&
+                        isQuizMode &&
+                        selectedSection?.assessmentId &&
+                        sub.assessmentId === selectedSection.assessmentId,
+                      )
+                      : Boolean(
+                        !isAssignmentMode &&
+                        !isQuizMode &&
+                        !isBootstrappingModuleQuiz &&
+                        !shouldHoldModuleFinalRouteInQuizShell &&
+                        sub.slug &&
+                        sub.slug === activeLesson?.slug,
+                      );
+                    const subLocked = sub.unlocked === false;
                     return (
                       <button
                         key={sub.id}
                         type="button"
+                        disabled={subLocked}
                         onClick={() => handleSubmoduleSelect(sub)}
-                        aria-disabled={!sub.unlocked}
+                        aria-disabled={subLocked}
+                        title={subLocked ? "Submit all assignments in the previous module to unlock this module." : undefined}
                         className={`w-full flex items-center gap-3 p-2 rounded-md text-xs transition text-left border ${active
                           ? "bg-[#bf2f1f] border-[#bf2f1f] text-white"
                           : "hover:bg-white/5 border-transparent text-[#f8f1e6]/70"
-                          } ${!sub.unlocked ? "opacity-40 cursor-not-allowed hover:bg-transparent" : ""}`}
+                          } ${subLocked ? "opacity-40 cursor-not-allowed hover:bg-transparent" : ""}`}
                       >
-                        {sub.type === "quiz" ? <FileText size={14} className="flex-shrink-0" /> : <Play size={14} className="flex-shrink-0" />}
+                        {subLocked ? <Lock size={14} className="flex-shrink-0" /> : sub.type === "quiz" ? <FileText size={14} className="flex-shrink-0" /> : <Play size={14} className="flex-shrink-0" />}
                         <span className="truncate flex-1">{sub.title}</span>
                         {sub.type === "quiz" && !sub.slug && <span className="text-[10px] text-[#f8f1e6]/50">Quiz</span>}
                       </button>
                     );
                   })}
+                  {module.id !== 0 && (
+                    <button
+                      type="button"
+                      disabled={moduleLocked}
+                      aria-disabled={moduleLocked}
+                      title={moduleLocked ? "Submit all assignments in the previous module to unlock this module." : undefined}
+                      onClick={() => {
+                        if (moduleLocked) {
+                          return;
+                        }
+                        setIsAssignmentMode(true);
+                        setActiveAssignmentModule(module.id);
+                        setIsQuizMode(false);
+                      }}
+                      className={`w-full text-left px-3 py-2 text-[11px] font-bold flex items-center gap-3 transition-all rounded-md ${isAssignmentMode && activeAssignmentModule === module.id
+                        ? "bg-[#bf2f1f]/20 text-[#bf2f1f]"
+                        : "text-[#4a4845] hover:bg-[#000000]/5 hover:text-[#000000]"
+                        } ${moduleLocked ? "opacity-40 cursor-not-allowed hover:bg-transparent hover:text-[#4a4845]" : ""}`}
+                    >
+                      {moduleLocked ? <Lock size={14} className="flex-shrink-0" /> : <ClipboardList size={14} className="flex-shrink-0" />}
+                      <span className="truncate flex-1">Module Assignment</span>
+                    </button>
+                  )}
                 </div>
               </div>
             );
@@ -3131,18 +3661,27 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
             )}
             <button
               type="button"
-              onClick={() => setLocation("/student-dashboard")}
+              onClick={() => isAssignmentMode ? setIsAssignmentMode(false) : setLocation("/student-dashboard")}
               className="flex items-center gap-2 text-sm font-semibold text-[#f8f1e6]/80 hover:text-white transition"
             >
               <ChevronLeft size={18} /> Back
             </button>
             <div>
-              <p className="text-xs text-[#f8f1e6]/60">Module {activeLesson?.moduleNo}</p>
-              <h1 className="text-xl md:text-2xl font-black leading-tight">{activeLesson?.topicName ?? "Loading..."}</h1>
+              {isAssignmentMode ? (
+                <>
+                  <p className="text-xs text-[#f8f1e6]/60">Module {activeAssignmentModule}</p>
+                  <h1 className="text-xl md:text-2xl font-black leading-tight">Module Assignments</h1>
+                </>
+              ) : (
+                <>
+                  <p className="text-xs text-[#f8f1e6]/60">Module {activeLesson?.moduleNo}</p>
+                  <h1 className="text-xl md:text-2xl font-black leading-tight">{activeLesson?.topicName ?? "Loading..."}</h1>
+                </>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-2 text-xs md:text-sm text-[#f8f1e6]/70">
-            {isCohortProgram && (
+            {isCohortProgram && !isAssignmentMode && (
               <button
                 type="button"
                 onClick={handleOpenCohortProject}
@@ -3156,27 +3695,63 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
           </div>
         </div>
         <div
+          key={stageKey}
           ref={contentScrollRef}
           className={`${isFullScreen ? "flex-1 overflow-hidden" : "flex-1 overflow-y-auto"} relative`}
         >
           {/* Video */}
-          {!isQuizMode && !hasBlockLayout && (
+          {!isAssignmentMode && !isQuizMode && !hasBlockLayout && (
             <div
               className={`relative bg-black transition-all duration-300 shrink-0 flex justify-center items-center ${isFullScreen ? "flex-1 h-full" : isReadingMode ? "h-0 overflow-hidden" : videoHeightClass
                 }`}
             >
               <div
-                className={`relative aspect-video group bg-black shadow-2xl max-w-full max-h-full ${isFullScreen ? "w-auto h-auto" : "w-full h-full"
+                className={`relative aspect-video group bg-black shadow-2xl max-w-full max-h-full rounded-3xl overflow-hidden ${isFullScreen ? "w-auto h-auto" : "w-full h-full"
                   }`}
               >
                 {activeVideoUrl ? (
-                  <iframe
-                    className="w-full h-full"
-                    src={activeVideoUrl}
-                    title={activeLesson?.topicName ?? "Lesson video"}
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  />
+                  isYouTubeVideoUrl(activeVideoUrl) && getYouTubeVideoId(activeVideoUrl) && !activatedVideos[`hero:${activeVideoUrl}`] ? (
+                    <button
+                      type="button"
+                      onClick={() => setActivatedVideos((prev) => ({ ...prev, [`hero:${activeVideoUrl}`]: true }))}
+                      className="relative w-full h-full block rounded-[inherit] overflow-hidden"
+                      aria-label={`Play ${activeLesson?.topicName ?? "Lesson video"}`}
+                    >
+                      <span
+                        className="block w-full h-full rounded-[inherit] bg-black"
+                        style={{
+                          backgroundImage: `url("https://i.ytimg.com/vi/${getYouTubeVideoId(activeVideoUrl)}/maxresdefault.jpg"), url("https://i.ytimg.com/vi/${getYouTubeVideoId(activeVideoUrl)}/hqdefault.jpg")`,
+                          backgroundSize: "contain",
+                          backgroundPosition: "center",
+                          backgroundRepeat: "no-repeat",
+                        }}
+                        aria-label={activeLesson?.topicName ?? "Lesson video"}
+                      />
+                      <span className="absolute inset-0 flex items-center justify-center">
+                        <span className="w-16 h-16 rounded-full bg-white/90 text-[#bf2f1f] flex items-center justify-center shadow-xl">
+                          <Play size={28} fill="currentColor" />
+                        </span>
+                      </span>
+                    </button>
+                  ) : isYouTubeVideoUrl(activeVideoUrl) ? (
+                    <iframe
+                      className="w-full h-full block border-0 rounded-[inherit] overflow-hidden"
+                      src={activeVideoUrl}
+                      title={activeLesson?.topicName ?? "Lesson video"}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  ) : (
+                    <video
+                      className="w-full h-full block rounded-[inherit] overflow-hidden"
+                      controls
+                      playsInline
+                      preload="metadata"
+                      title={activeLesson?.topicName ?? "Lesson video"}
+                    >
+                      <source src={activeVideoUrl} />
+                    </video>
+                  )
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-[#f8f1e6]/60">
                     No video for this lesson.
@@ -3187,8 +3762,8 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
           )}
 
           {/* Study section */}
-          {!isFullScreen && !isQuizMode && (
-            <div className="bg-[#f8f1e6] border-t-4 border-[#000000] w-full text-[#000000]">
+          {!isAssignmentMode && !isFullScreen && !isQuizMode && !isBootstrappingModuleQuiz && !shouldHoldModuleFinalRouteInQuizShell && (
+            <div className="bg-[#f8f1e6] border-t-4 border-[#000000] w-full min-h-full text-[#000000]">
               <div className={`w-full ${studySectionPadding} space-y-8`}>
                 {!hasBlockLayout && renderStudyHeader()}
 
@@ -3199,11 +3774,10 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
                         type="button"
                         onClick={toggleTts}
                         disabled={!ttsText || ttsStatus === "unavailable"}
-                        className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] shadow-sm transition ${
-                          ttsStatus === "playing"
-                            ? "bg-[#bf2f1f] text-white border-[#bf2f1f]"
-                            : "bg-white text-[#1c242c] border-[#e8e1d8] hover:border-[#bf2f1f]"
-                        } ${!ttsText || ttsStatus === "unavailable" ? "opacity-50 cursor-not-allowed" : ""}`}
+                        className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] shadow-sm transition ${ttsStatus === "playing"
+                          ? "bg-[#bf2f1f] text-white border-[#bf2f1f]"
+                          : "bg-white text-[#1c242c] border-[#e8e1d8] hover:border-[#bf2f1f]"
+                          } ${!ttsText || ttsStatus === "unavailable" ? "opacity-50 cursor-not-allowed" : ""}`}
                         aria-label={ttsStatus === "playing" ? "Pause text to speech" : "Play text to speech"}
                         title={ttsStatus === "playing" ? "Pause text to speech" : "Play text to speech"}
                       >
@@ -3266,9 +3840,19 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
             </div>
           )}
 
+          {!isAssignmentMode && (isBootstrappingModuleQuiz || shouldHoldModuleFinalRouteInQuizShell) && (
+            <div className="flex-1 min-h-full bg-[#000000] flex flex-col items-center justify-center p-8 relative">
+              <div className="absolute inset-0 bg-gradient-to-br from-[#bf2f1f]/10 to-transparent pointer-events-none" />
+              <div className="max-w-2xl w-full bg-[#f8f1e6] text-[#000000] rounded-xl p-8 shadow-2xl border-2 border-[#bf2f1f] z-10 text-center">
+                <h2 className="text-3xl font-black uppercase tracking-tight">Preparing Gauntlet</h2>
+                <p className="mt-3 text-sm text-[#4a4845]">Loading module final assessment...</p>
+              </div>
+            </div>
+          )}
+
           {/* Quiz overlay */}
-          {isQuizMode && (
-            <div className="flex-1 bg-[#000000] flex flex-col items-center justify-center p-8 relative">
+          {!isAssignmentMode && isQuizMode && (
+            <div className="flex-1 min-h-full bg-[#000000] flex flex-col items-center justify-center p-8 relative">
               <div className="absolute inset-0 bg-gradient-to-br from-[#bf2f1f]/10 to-transparent pointer-events-none" />
               <div className="max-w-2xl w-full bg-[#f8f1e6] text-[#000000] rounded-xl p-8 shadow-2xl border-2 border-[#bf2f1f] z-10">
                 {quizPhase === "intro" && (
@@ -3308,7 +3892,7 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
                 {quizPhase === "active" && (
                   <div className="animate-fade-in">
                     <div className="flex justify-between items-center mb-8 border-b-2 border-[#000000]/10 pb-4">
-                      <span className="font-bold text-[#4a4845]">Question {Object.keys(answers).length + 1} / {quizQuestions.length}</span>
+                      <span className="font-bold text-[#4a4845]">Question {Object.keys(answers).length} / {quizQuestions.length}</span>
                       <span className={`font-mono text-xl font-bold ${quizTimer < 10 ? "text-[#bf2f1f] animate-pulse" : "text-[#000000]"}`}>
                         {Math.floor(quizTimer / 60).toString().padStart(2, "0")}:
                         {(quizTimer % 60).toString().padStart(2, "0")}
@@ -3379,260 +3963,276 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
               </div>
             </div>
           )}
-        </div>
-      </div>
+
+          {/* Module Assignments */}
+          {isAssignmentMode && activeAssignmentModule !== null && (
+            <ModuleAssignmentsView
+              courseId={courseIdForAssignments ?? activeLesson?.courseId ?? courseKey ?? null}
+              moduleNo={activeAssignmentModule}
+              programType={programType}
+              onClose={() => setIsAssignmentMode(false)}
+            />
+          )}
+        </div >
+      </div >
 
       {/* Chat widget */}
-      {chatOpen && !isQuizMode && (
-        <div
-          className="fixed bg-[#000000]/95 backdrop-blur-md border border-[#4a4845] rounded-xl shadow-2xl flex flex-col transition-shadow duration-300 overflow-hidden z-[60]"
-          style={{ left: chatRect.x, top: chatRect.y, width: chatRect.width, height: chatRect.height }}
-        >
+      {
+        chatOpen && !isQuizMode && (
           <div
-            className="p-3 bg-[#bf2f1f] flex justify-between items-center cursor-move select-none"
-            onMouseDown={(e) => handleMouseDown(e, "move", "chat")}
+            className="fixed bg-[#000000]/95 backdrop-blur-md border border-[#4a4845] rounded-xl shadow-2xl flex flex-col transition-shadow duration-300 overflow-hidden z-[60]"
+            style={{ left: chatRect.x, top: chatRect.y, width: chatRect.width, height: chatRect.height }}
           >
-            <div className="flex items-center gap-2 text-white font-bold text-sm"><MessageSquare size={16} /> AI Tutor</div>
-            <div className="flex items-center gap-1">
-              <button
-                onMouseDown={(event) => event.stopPropagation()}
-                onClick={handleChatExpandToggle}
-                className="p-1 hover:bg-white/20 rounded"
-                title={chatExpanded ? "Minimize" : "Maximize"}
-              >
-                {chatExpanded ? <Minimize size={14} className="text-white" /> : <Maximize size={14} className="text-white" />}
-              </button>
-              <button onClick={() => setChatOpen(false)} className="p-1 hover:bg-white/20 rounded"><X size={14} className="text-white" /></button>
-            </div>
-          </div>
-          <div
-            ref={chatListRef}
-            className="flex-1 overflow-y-auto p-3 space-y-3 bg-black/40 text-sm text-[#f8f1e6]/80"
-          >
-            {chatMessages.map((msg) => {
-              const followUpsForMessage = inlineFollowUps[msg.id] ?? [];
-              const showInlineChip =
-                !!msg.suggestionContext && msg.isBot && Boolean(inlineFollowUps[msg.id]?.length) && !chatLoading;
-              const showThinkingIndicator =
-                msg.isBot && chatLoading && !msg.error && msg.text.trim().length === 0;
-
-              return (
-                <div
-                  key={msg.id}
-                  ref={(node) => {
-                    if (node) {
-                      chatMessageRefs.current[msg.id] = node;
-                    } else {
-                      delete chatMessageRefs.current[msg.id];
-                    }
-                  }}
-                  className="space-y-2"
+            <div
+              className="p-3 bg-[#bf2f1f] flex justify-between items-center cursor-move select-none"
+              onMouseDown={(e) => handleMouseDown(e, "move", "chat")}
+            >
+              <div className="flex items-center gap-2 text-white font-bold text-sm"><MessageSquare size={16} /> AI Tutor</div>
+              <div className="flex items-center gap-1">
+                <button
+                  onMouseDown={(event) => event.stopPropagation()}
+                  onClick={handleChatExpandToggle}
+                  className="p-1 hover:bg-white/20 rounded"
+                  title={chatExpanded ? "Minimize" : "Maximize"}
                 >
+                  {chatExpanded ? <Minimize size={14} className="text-white" /> : <Maximize size={14} className="text-white" />}
+                </button>
+                <button onClick={() => setChatOpen(false)} className="p-1 hover:bg-white/20 rounded"><X size={14} className="text-white" /></button>
+              </div>
+            </div>
+            <div
+              ref={chatListRef}
+              className="flex-1 overflow-y-auto p-3 space-y-3 bg-black/40 text-sm text-[#f8f1e6]/80"
+            >
+              {chatMessages.map((msg) => {
+                const followUpsForMessage = inlineFollowUps[msg.id] ?? [];
+                const showInlineChip =
+                  !!msg.suggestionContext && msg.isBot && Boolean(inlineFollowUps[msg.id]?.length) && !chatLoading;
+                const showThinkingIndicator =
+                  msg.isBot && chatLoading && !msg.error && msg.text.trim().length === 0;
+
+                return (
                   <div
-                    className={`p-2 rounded-lg ${msg.isBot ? "bg-white/5 border border-white/10" : "bg-[#bf2f1f]/20 border border-[#bf2f1f]/40"} ${msg.error ? "border-red-500/60 text-red-200" : ""
-                      }`}
+                    key={msg.id}
+                    ref={(node) => {
+                      if (node) {
+                        chatMessageRefs.current[msg.id] = node;
+                      } else {
+                        delete chatMessageRefs.current[msg.id];
+                      }
+                    }}
+                    className="space-y-2"
                   >
-                    <div className="text-[11px] uppercase tracking-wide opacity-70">{msg.isBot ? "Tutor" : "You"}</div>
-                    {showThinkingIndicator ? (
-                      <div className="mt-1 rounded-lg border border-[#bf2f1f]/30 bg-gradient-to-br from-[#1a0b09] via-[#100809] to-[#070707] p-2.5 space-y-2">
-                        <div className="flex items-center gap-2 text-xs text-[#f8f1e6]/90">
-                          <span className="relative flex h-3 w-3">
-                            <span className="absolute inline-flex h-full w-full rounded-full bg-[#ff5a3c]/50 animate-ping" />
-                            <span className="relative inline-flex h-3 w-3 rounded-full bg-[#ff5a3c]" />
-                          </span>
-                          <span>{chatLoadingMessage}</span>
+                    <div
+                      className={`p-2 rounded-lg ${msg.isBot ? "bg-white/5 border border-white/10" : "bg-[#bf2f1f]/20 border border-[#bf2f1f]/40"} ${msg.error ? "border-red-500/60 text-red-200" : ""
+                        }`}
+                    >
+                      <div className="text-[11px] uppercase tracking-wide opacity-70">{msg.isBot ? "Tutor" : "You"}</div>
+                      {showThinkingIndicator ? (
+                        <div className="mt-1 rounded-lg border border-[#bf2f1f]/30 bg-gradient-to-br from-[#1a0b09] via-[#100809] to-[#070707] p-2.5 space-y-2">
+                          <div className="flex items-center gap-2 text-xs text-[#f8f1e6]/90">
+                            <span className="relative flex h-3 w-3">
+                              <span className="absolute inline-flex h-full w-full rounded-full bg-[#ff5a3c]/50 animate-ping" />
+                              <span className="relative inline-flex h-3 w-3 rounded-full bg-[#ff5a3c]" />
+                            </span>
+                            <span>{chatLoadingMessage}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="h-2 w-2 rounded-full bg-[#ff5a3c] animate-[pulse_1.1s_ease-in-out_infinite] [animation-delay:0ms] shadow-[0_0_8px_rgba(255,90,60,0.65)]" />
+                            <span className="h-2 w-2 rounded-full bg-[#ff5a3c] animate-[pulse_1.1s_ease-in-out_infinite] [animation-delay:140ms] shadow-[0_0_8px_rgba(255,90,60,0.65)]" />
+                            <span className="h-2 w-2 rounded-full bg-[#ff5a3c] animate-[pulse_1.1s_ease-in-out_infinite] [animation-delay:280ms] shadow-[0_0_8px_rgba(255,90,60,0.65)]" />
+                            <span className="h-2 w-2 rounded-full bg-[#ff5a3c] animate-[pulse_1.1s_ease-in-out_infinite] [animation-delay:420ms] shadow-[0_0_8px_rgba(255,90,60,0.65)]" />
+                          </div>
                         </div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="h-2 w-2 rounded-full bg-[#ff5a3c] animate-[pulse_1.1s_ease-in-out_infinite] [animation-delay:0ms] shadow-[0_0_8px_rgba(255,90,60,0.65)]" />
-                          <span className="h-2 w-2 rounded-full bg-[#ff5a3c] animate-[pulse_1.1s_ease-in-out_infinite] [animation-delay:140ms] shadow-[0_0_8px_rgba(255,90,60,0.65)]" />
-                          <span className="h-2 w-2 rounded-full bg-[#ff5a3c] animate-[pulse_1.1s_ease-in-out_infinite] [animation-delay:280ms] shadow-[0_0_8px_rgba(255,90,60,0.65)]" />
-                          <span className="h-2 w-2 rounded-full bg-[#ff5a3c] animate-[pulse_1.1s_ease-in-out_infinite] [animation-delay:420ms] shadow-[0_0_8px_rgba(255,90,60,0.65)]" />
-                        </div>
+                      ) : (
+                        <div className="whitespace-pre-line">{msg.text}</div>
+                      )}
+                    </div>
+                    {starterAnchorMessageId === msg.id && !chatLoading && (
+                      <div className="pl-3 border-l border-white/10 space-y-2">
+                        <p className="text-xs text-[#f8f1e6]/70">
+                          Hello! Curious about this topic? Not sure what to ask? Choose one of these to get started.
+                        </p>
+                        {suggestionsLoading ? (
+                          <div className="space-y-2">
+                            <div className="h-7 w-40 rounded-full bg-white/10 animate-pulse" />
+                            <div className="h-7 w-48 rounded-full bg-white/10 animate-pulse" />
+                            <div className="h-7 w-36 rounded-full bg-white/10 animate-pulse" />
+                          </div>
+                        ) : visibleStarterSuggestions.length > 0 ? (
+                          <div className="flex flex-col gap-2 items-start">
+                            {visibleStarterSuggestions.map((suggestion) => (
+                              <button
+                                key={suggestion.id}
+                                type="button"
+                                disabled={chatLoading}
+                                onClick={() => handleSuggestionSelect(suggestion)}
+                                className={`px-4 py-1.5 rounded-full text-xs border transition ${chatLoading
+                                  ? "opacity-40 cursor-not-allowed border-[#4a4845]/40 text-[#f8f1e6]/40"
+                                  : "border-white/25 text-white/80 hover:border-white hover:text-white"
+                                  }`}
+                              >
+                                {suggestion.promptText}
+                              </button>
+                            ))}
+                          </div>
+                        ) : availableStarterSuggestions.length === 0 ? (
+                          <p className="text-xs text-[#f8f1e6]/50">Starter prompts will appear when this topic loads.</p>
+                        ) : (
+                          <p className="text-xs text-[#f8f1e6]/50">Refreshing prompts...</p>
+                        )}
                       </div>
-                    ) : (
-                      <div className="whitespace-pre-line">{msg.text}</div>
                     )}
-                  </div>
-                  {starterAnchorMessageId === msg.id && !chatLoading && (
-                    <div className="pl-3 border-l border-white/10 space-y-2">
-                      <p className="text-xs text-[#f8f1e6]/70">
-                        Hello! Curious about this topic? Not sure what to ask? Choose one of these to get started.
-                      </p>
-                      {suggestionsLoading ? (
-                        <div className="space-y-2">
-                          <div className="h-7 w-40 rounded-full bg-white/10 animate-pulse" />
-                          <div className="h-7 w-48 rounded-full bg-white/10 animate-pulse" />
-                          <div className="h-7 w-36 rounded-full bg-white/10 animate-pulse" />
-                        </div>
-                      ) : visibleStarterSuggestions.length > 0 ? (
-                        <div className="flex flex-col gap-2 items-start">
-                          {visibleStarterSuggestions.map((suggestion) => (
+                    {showInlineChip && (
+                      <div className="flex justify-end">
+                        <span className="px-3 py-1 rounded-full bg-white text-[#bf2f1f] text-xs font-semibold">
+                          {msg.suggestionContext?.promptText}
+                        </span>
+                      </div>
+                    )}
+                    {followUpsForMessage.length > 0 && !chatLoading && (
+                      <div className="pl-2 border-l border-white/10 space-y-1">
+                        <div className="text-[10px] uppercase tracking-wide text-[#f8f1e6]/60">More to explore</div>
+                        <div className="flex flex-wrap gap-2">
+                          {followUpsForMessage.map((suggestion) => (
                             <button
-                              key={suggestion.id}
+                              key={`${msg.id}-${suggestion.id}`}
                               type="button"
                               disabled={chatLoading}
                               onClick={() => handleSuggestionSelect(suggestion)}
-                              className={`px-4 py-1.5 rounded-full text-xs border transition ${chatLoading
-                                ? "opacity-40 cursor-not-allowed border-[#4a4845]/40 text-[#f8f1e6]/40"
-                                : "border-white/25 text-white/80 hover:border-white hover:text-white"
+                              className={`px-3 py-1 rounded-full text-xs border transition ${chatLoading
+                                ? "opacity-50 cursor-not-allowed border-[#4a4845]/40 text-[#f8f1e6]/40"
+                                : "border-[#f8f1e6]/30 text-[#f8f1e6]/80 hover:border-white hover:text-white"
                                 }`}
                             >
                               {suggestion.promptText}
                             </button>
                           ))}
                         </div>
-                      ) : availableStarterSuggestions.length === 0 ? (
-                        <p className="text-xs text-[#f8f1e6]/50">Starter prompts will appear when this topic loads.</p>
-                      ) : (
-                        <p className="text-xs text-[#f8f1e6]/50">Refreshing prompts...</p>
-                      )}
-                    </div>
-                  )}
-                  {showInlineChip && (
-                    <div className="flex justify-end">
-                      <span className="px-3 py-1 rounded-full bg-white text-[#bf2f1f] text-xs font-semibold">
-                        {msg.suggestionContext?.promptText}
-                      </span>
-                    </div>
-                  )}
-                  {followUpsForMessage.length > 0 && !chatLoading && (
-                    <div className="pl-2 border-l border-white/10 space-y-1">
-                      <div className="text-[10px] uppercase tracking-wide text-[#f8f1e6]/60">More to explore</div>
-                      <div className="flex flex-wrap gap-2">
-                        {followUpsForMessage.map((suggestion) => (
-                          <button
-                            key={`${msg.id}-${suggestion.id}`}
-                            type="button"
-                            disabled={chatLoading}
-                            onClick={() => handleSuggestionSelect(suggestion)}
-                            className={`px-3 py-1 rounded-full text-xs border transition ${chatLoading
-                              ? "opacity-50 cursor-not-allowed border-[#4a4845]/40 text-[#f8f1e6]/40"
-                              : "border-[#f8f1e6]/30 text-[#f8f1e6]/80 hover:border-white hover:text-white"
-                              }`}
-                          >
-                            {suggestion.promptText}
-                          </button>
-                        ))}
                       </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            <div className="p-3 bg-white/5 border-t border-[#4a4845]/30 flex gap-2">
+              <input
+                className="flex-1 bg-transparent border border-[#4a4845]/50 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-[#bf2f1f]"
+                placeholder="Ask AI..."
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    void handleSendChat();
+                  }
+                }}
+                disabled={chatLoading}
+              />
+              <button className="p-2" disabled={chatLoading} onClick={() => void handleSendChat()}>
+                <Send size={16} className="text-[#bf2f1f]" />
+              </button>
+            </div>
+            <div className="absolute top-0 right-0 w-1 h-full cursor-ew-resize hover:bg-white/20" onMouseDown={(e) => handleMouseDown(e, "resize-r", "chat")} />
+            <div className="absolute bottom-0 left-0 w-full h-1 cursor-ns-resize hover:bg-white/20" onMouseDown={(e) => handleMouseDown(e, "resize-b", "chat")} />
+            <div className="absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize bg-white/20 hover:bg-white/40 rounded-tl" onMouseDown={(e) => handleMouseDown(e, "resize-br", "chat")} />
           </div>
-          <div className="p-3 bg-white/5 border-t border-[#4a4845]/30 flex gap-2">
-            <input
-              className="flex-1 bg-transparent border border-[#4a4845]/50 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-[#bf2f1f]"
-              placeholder="Ask AI..."
-              value={chatInput}
-              onChange={(e) => setChatInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  void handleSendChat();
-                }
-              }}
-              disabled={chatLoading}
-            />
-            <button className="p-2" disabled={chatLoading} onClick={() => void handleSendChat()}>
-              <Send size={16} className="text-[#bf2f1f]" />
-            </button>
-          </div>
-          <div className="absolute top-0 right-0 w-1 h-full cursor-ew-resize hover:bg-white/20" onMouseDown={(e) => handleMouseDown(e, "resize-r", "chat")} />
-          <div className="absolute bottom-0 left-0 w-full h-1 cursor-ns-resize hover:bg-white/20" onMouseDown={(e) => handleMouseDown(e, "resize-b", "chat")} />
-          <div className="absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize bg-white/20 hover:bg-white/40 rounded-tl" onMouseDown={(e) => handleMouseDown(e, "resize-br", "chat")} />
-        </div>
-      )}
+        )
+      }
 
       {/* Notes widget */}
-      {notesOpen && !isQuizMode && (
-        <div
-          className="fixed bg-[#f8f1e6]/95 backdrop-blur-md border-2 border-[#000000] rounded-xl shadow-2xl flex flex-col overflow-hidden z-[60]"
-          style={{ left: notesRect.x, top: notesRect.y, width: notesRect.width, height: notesRect.height }}
-        >
+      {
+        notesOpen && !isQuizMode && (
           <div
-            className="p-3 bg-[#000000] flex justify-between items-center cursor-move select-none"
-            onMouseDown={(e) => handleMouseDown(e, "move", "notes")}
+            className="fixed bg-[#f8f1e6]/95 backdrop-blur-md border-2 border-[#000000] rounded-xl shadow-2xl flex flex-col overflow-hidden z-[60]"
+            style={{ left: notesRect.x, top: notesRect.y, width: notesRect.width, height: notesRect.height }}
           >
-            <div className="flex items-center gap-2 text-[#f8f1e6] font-bold text-sm"><FileText size={16} /> My Notes</div>
-            <div className="flex items-center gap-1 text-[#f8f1e6]">
-              <button onClick={() => centerWidget("notes")} className="p-1 hover:bg-white/20 rounded" title="Reset Position"><Move size={14} /></button>
-              <button onClick={() => setNotesOpen(false)} className="p-1 hover:bg-white/20 rounded"><X size={14} /></button>
+            <div
+              className="p-3 bg-[#000000] flex justify-between items-center cursor-move select-none"
+              onMouseDown={(e) => handleMouseDown(e, "move", "notes")}
+            >
+              <div className="flex items-center gap-2 text-[#f8f1e6] font-bold text-sm"><FileText size={16} /> My Notes</div>
+              <div className="flex items-center gap-1 text-[#f8f1e6]">
+                <button onClick={() => centerWidget("notes")} className="p-1 hover:bg-white/20 rounded" title="Reset Position"><Move size={14} /></button>
+                <button onClick={() => setNotesOpen(false)} className="p-1 hover:bg-white/20 rounded"><X size={14} /></button>
+              </div>
             </div>
+            <textarea className="flex-1 p-3 bg-transparent resize-none text-[#000000] text-sm focus:outline-none font-mono" placeholder="Type notes here..."></textarea>
+            <div className="absolute top-0 right-0 w-1 h-full cursor-ew-resize hover:bg-[#bf2f1f]/20" onMouseDown={(e) => handleMouseDown(e, "resize-r", "notes")} />
+            <div className="absolute bottom-0 left-0 w-full h-1 cursor-ns-resize hover:bg-[#bf2f1f]/20" onMouseDown={(e) => handleMouseDown(e, "resize-b", "notes")} />
+            <div className="absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize bg-[#000000]/20 hover:bg-[#000000]/40 rounded-tl" onMouseDown={(e) => handleMouseDown(e, "resize-br", "notes")} />
           </div>
-          <textarea className="flex-1 p-3 bg-transparent resize-none text-[#000000] text-sm focus:outline-none font-mono" placeholder="Type notes here..."></textarea>
-          <div className="absolute top-0 right-0 w-1 h-full cursor-ew-resize hover:bg-[#bf2f1f]/20" onMouseDown={(e) => handleMouseDown(e, "resize-r", "notes")} />
-          <div className="absolute bottom-0 left-0 w-full h-1 cursor-ns-resize hover:bg-[#bf2f1f]/20" onMouseDown={(e) => handleMouseDown(e, "resize-b", "notes")} />
-          <div className="absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize bg-[#000000]/20 hover:bg-[#000000]/40 rounded-tl" onMouseDown={(e) => handleMouseDown(e, "resize-br", "notes")} />
-        </div>
-      )}
+        )
+      }
 
       {/* Study widget */}
-      {studyWidgetOpen && !isQuizMode && (
-        <div
-          className="fixed bg-[#f8f1e6]/95 backdrop-blur-md border-2 border-[#000000] rounded-xl shadow-2xl flex flex-col overflow-hidden z-[60]"
-          style={{ left: studyWidgetRect.x, top: studyWidgetRect.y, width: studyWidgetRect.width, height: studyWidgetRect.height }}
-        >
+      {
+        studyWidgetOpen && !isQuizMode && (
           <div
-            className="p-3 bg-[#000000] flex justify-between items-center cursor-move select-none"
-            onMouseDown={(e) => handleMouseDown(e, "move", "study")}
+            className="fixed bg-[#f8f1e6]/95 backdrop-blur-md border-2 border-[#000000] rounded-xl shadow-2xl flex flex-col overflow-hidden z-[60]"
+            style={{ left: studyWidgetRect.x, top: studyWidgetRect.y, width: studyWidgetRect.width, height: studyWidgetRect.height }}
           >
-            <div className="flex items-center gap-2 text-[#f8f1e6] font-bold text-sm">
-              <Book size={16} /> Study Material
-            </div>
-            <div className="flex items-center gap-1 text-[#f8f1e6]">
-              <button onClick={() => centerWidget("study")} className="p-1 hover:bg-white/20 rounded" title="Reset Position"><Move size={14} /></button>
-              <button onClick={() => setStudyWidgetOpen(false)} className="p-1 hover:bg-white/20 rounded"><X size={14} /></button>
-            </div>
-          </div>
-          <div className="flex-1 overflow-y-auto p-6 bg-[#f8f1e6] text-[#000000]">
-            {hasBlockLayout && contentBlocks ? (
-              <div className="space-y-4">{renderContentBlocks(contentBlocks.blocks, "widget")}</div>
-            ) : formattedStudyText ? (
-              <div className="rounded-2xl border border-[#000000]/10 bg-white shadow-sm">
-                <div className="p-4 prose prose-sm max-w-none text-[#1e293b]">
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm]}
-                    rehypePlugins={[rehypeSanitize]}
-                    components={studyMarkdownComponents}
-                  >
-                    {formattedStudyText}
-                  </ReactMarkdown>
-                </div>
+            <div
+              className="p-3 bg-[#000000] flex justify-between items-center cursor-move select-none"
+              onMouseDown={(e) => handleMouseDown(e, "move", "study")}
+            >
+              <div className="flex items-center gap-2 text-[#f8f1e6] font-bold text-sm">
+                <Book size={16} /> Study Material
               </div>
-            ) : (
-              <p className="text-sm text-[#4a4845]">No study material for this lesson.</p>
-            )}
-            {!hasBlockLayout && activePptEmbedUrl && activeLesson?.pptUrl && (
-              <div className="mt-6 space-y-2">
-                <div className="rounded-xl border-2 border-[#000000] bg-white overflow-hidden">
-                  <div className="flex items-center gap-2 px-3 py-2 border-b border-[#000000]/10 text-sm font-semibold">
-                    <FileText size={14} />
-                    <span>Slides Viewer</span>
-                  </div>
-                  <div className="bg-[#f6f2eb] h-[360px] rounded-b-xl overflow-hidden">
-                    <iframe
-                      title={`Slides for ${activeLesson.topicName} (Study widget)`}
-                      src={activePptEmbedUrl}
-                      className="w-full h-full border-0"
-                      referrerPolicy="no-referrer"
-                      allowFullScreen
-                      loading="lazy"
-                    />
+              <div className="flex items-center gap-1 text-[#f8f1e6]">
+                <button onClick={() => centerWidget("study")} className="p-1 hover:bg-white/20 rounded" title="Reset Position"><Move size={14} /></button>
+                <button onClick={() => setStudyWidgetOpen(false)} className="p-1 hover:bg-white/20 rounded"><X size={14} /></button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6 bg-[#f8f1e6] text-[#000000]">
+              {hasBlockLayout && contentBlocks ? (
+                <div className="space-y-4">{renderContentBlocks(contentBlocks.blocks, "widget")}</div>
+              ) : formattedStudyText ? (
+                <div className="rounded-2xl border border-[#000000]/10 bg-white shadow-sm">
+                  <div className="p-4 prose prose-sm max-w-none text-[#1e293b]">
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      rehypePlugins={[rehypeSanitize]}
+                      components={studyMarkdownComponents}
+                    >
+                      {formattedStudyText}
+                    </ReactMarkdown>
                   </div>
                 </div>
-                <p className="text-[11px] text-[#4a4845]">Use the embedded Microsoft viewer controls to move between slides.</p>
-              </div>
-            )}
-            {activeLesson?.simulation && (
-              <SimulationExercise simulation={activeLesson.simulation} />
-            )}
+              ) : (
+                <p className="text-sm text-[#4a4845]">No study material for this lesson.</p>
+              )}
+              {!hasBlockLayout && activePptEmbedUrl && activeLesson?.pptUrl && (
+                <div className="mt-6 space-y-2">
+                  <div className="rounded-xl border-2 border-[#000000] bg-white overflow-hidden">
+                    <div className="flex items-center gap-2 px-3 py-2 border-b border-[#000000]/10 text-sm font-semibold">
+                      <FileText size={14} />
+                      <span>Slides Viewer</span>
+                    </div>
+                    <div className="bg-[#f6f2eb] h-[360px] rounded-b-xl overflow-hidden">
+                      <iframe
+                        title={`Slides for ${activeLesson.topicName} (Study widget)`}
+                        src={activePptEmbedUrl}
+                        className="w-full h-full border-0"
+                        referrerPolicy="no-referrer"
+                        allowFullScreen
+                        loading="lazy"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-[#4a4845]">Use the embedded Microsoft viewer controls to move between slides.</p>
+                </div>
+              )}
+              {activeLesson?.simulation && (
+                <SimulationExercise simulation={activeLesson.simulation} />
+              )}
+            </div>
+            <div className="absolute top-0 right-0 w-1 h-full cursor-ew-resize hover:bg-[#bf2f1f]/50" onMouseDown={(e) => handleMouseDown(e, "resize-r", "study")} />
+            <div className="absolute bottom-0 left-0 w-full h-1 cursor-ns-resize hover:bg-[#bf2f1f]/50" onMouseDown={(e) => handleMouseDown(e, "resize-b", "study")} />
+            <div className="absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize bg-[#4a4845]/20 hover:bg-[#bf2f1f] rounded-tl" onMouseDown={(e) => handleMouseDown(e, "resize-br", "study")} />
           </div>
-          <div className="absolute top-0 right-0 w-1 h-full cursor-ew-resize hover:bg-[#bf2f1f]/50" onMouseDown={(e) => handleMouseDown(e, "resize-r", "study")} />
-          <div className="absolute bottom-0 left-0 w-full h-1 cursor-ns-resize hover:bg-[#bf2f1f]/50" onMouseDown={(e) => handleMouseDown(e, "resize-b", "study")} />
-          <div className="absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize bg-[#4a4845]/20 hover:bg-[#bf2f1f] rounded-tl" onMouseDown={(e) => handleMouseDown(e, "resize-br", "study")} />
-        </div>
-      )}
+        )
+      }
 
       <button
         onClick={() => setChatOpen(!chatOpen)}
@@ -3643,18 +4243,20 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
         {chatOpen ? <X size={24} /> : <MessageSquare size={24} />}
       </button>
 
-      {isCohortProgram && (
-        <CohortProjectModal
-          isOpen={cohortProjectOpen}
-          project={cohortProject}
-          batchNo={cohortProjectBatch}
-          isLoading={cohortProjectLoading}
-          error={cohortProjectError}
-          onClose={handleCloseCohortProject}
-        />
-      )}
+      {
+        isCohortProgram && (
+          <CohortProjectModal
+            isOpen={cohortProjectOpen}
+            project={cohortProject}
+            batchNo={cohortProjectBatch}
+            isLoading={cohortProjectLoading}
+            error={cohortProjectError}
+            onClose={handleCloseCohortProject}
+          />
+        )
+      }
 
-    </div>
+    </div >
   );
 };
 
