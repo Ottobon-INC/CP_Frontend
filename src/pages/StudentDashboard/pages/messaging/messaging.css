@@ -4,12 +4,12 @@
 
 /* ── Legacy Dashboard Palette (used by restored filters/categories) ── */
 :root {
-  --dash-teal: #1B3535;
+  --dash-teal: #244855;
   --dash-orange: #E64833;
-  --orange-primary: #E64833;
-  --orange-soft: #FBE9D0;
-  --dark-teal: #1B3535;
-  --light-cream: #FFFDD0;
+  --retro-salmon: #E64833;
+  --retro-bg: #FBE9D0;
+  --retro-teal: #244855;
+  --gray-50: #F9FAFB;
 }
 
 .msg-filter-select {
@@ -34,7 +34,7 @@
 /* ── Container ── */
 .msg-container {
   display: flex;
-  background: var(--light-cream);
+  background: var(--gray-50);
   height: calc(100vh - 130px) !important;
   /* Account for header and content padding */
   overflow: hidden !important;
@@ -67,7 +67,7 @@
 .msg-sender-name-inside {
   font-size: 11px;
   font-weight: 700;
-  color: var(--orange-primary);
+  color: var(--retro-salmon);
   display: block;
   margin-bottom: 4px;
 }
@@ -75,7 +75,7 @@
 .msg-category-header h2 {
   font-size: 18px;
   font-weight: 800;
-  color: var(--dark-teal);
+  color: var(--retro-teal);
   margin: 0;
   letter-spacing: -0.02em;
   text-transform: uppercase;
@@ -108,8 +108,8 @@
 }
 
 .msg-category-item.active {
-  background: var(--orange-soft);
-  color: var(--orange-primary);
+  background: var(--retro-bg);
+  color: var(--retro-salmon);
 }
 
 .msg-category-info {
@@ -128,7 +128,7 @@
 }
 
 .msg-category-item.active .msg-category-desc {
-  color: var(--orange-primary);
+  color: var(--retro-salmon);
 }
 
 /* ── Conversation List ── */
@@ -159,7 +159,7 @@
 }
 
 .msg-search-box:focus-within {
-  border-color: var(--orange-primary);
+  border-color: var(--retro-salmon);
   box-shadow: 0 0 0 3px rgba(230, 72, 51, 0.1);
 }
 
@@ -192,7 +192,7 @@
 }
 
 .msg-conv-item.active {
-  background: var(--orange-soft);
+  background: var(--retro-bg);
 }
 
 /* ── Messenger-style Layout ── */
@@ -281,7 +281,7 @@
 
 .msg-action-btn-circle:hover {
   background: #f8fafc !important;
-  color: var(--orange-primary) !important;
+  color: var(--retro-salmon) !important;
   transform: scale(1.1);
 }
 
@@ -366,7 +366,7 @@
 }
 
 .sent .msg-message-bubble {
-  background: var(--orange-soft);
+  background: var(--retro-bg);
   color: #0f172a;
   border-bottom-right-radius: 4px;
   border: 1px solid rgba(230, 72, 51, 0.2);
@@ -374,12 +374,12 @@
 }
 
 .sent .msg-message-bubble a {
-  color: var(--orange-primary) !important;
+  color: var(--retro-salmon) !important;
   text-decoration: underline;
 }
 
 .sent .msg-message-bubble a:hover {
-  color: var(--dark-teal) !important;
+  color: var(--retro-teal) !important;
 }
 
 .received .msg-message-bubble {
@@ -498,7 +498,7 @@
 
 .msg-unread-badge {
   color: white;
-  background: var(--orange-primary);
+  background: var(--retro-salmon);
   font-size: 10px;
   padding: 2px 6px;
   border-radius: 10px;
@@ -506,7 +506,7 @@
 }
 
 .msg-seen-indicator {
-  color: var(--orange-primary);
+  color: var(--retro-salmon);
   display: inline-flex;
 }
 
@@ -640,7 +640,7 @@
 }
 
 .msg-message.sent .msg-message-bubble {
-  background: var(--orange-soft);
+  background: var(--retro-bg);
   color: #0f172a;
   align-self: flex-end;
   border-bottom-right-radius: 4px;
@@ -708,7 +708,7 @@
 
 .msg-attachment-card:hover {
   background: rgba(255, 255, 255, 0.8);
-  border-color: var(--orange-primary);
+  border-color: var(--retro-salmon);
   transform: translateY(-2px);
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.06);
 }
@@ -734,7 +734,7 @@
 }
 
 .sent .msg-attachment-type {
-  color: var(--orange-primary);
+  color: var(--retro-salmon);
 }
 
 .msg-attachment-type {
@@ -816,7 +816,7 @@
 }
 
 .msg-input-box:focus-within {
-  border-color: var(--orange-primary);
+  border-color: var(--retro-salmon);
   box-shadow: 0 0 0 3px rgba(230, 72, 51, 0.1);
 }
 
@@ -852,12 +852,12 @@
 }
 
 .msg-attach-btn:hover {
-  background: var(--orange-soft);
-  color: var(--orange-primary);
+  background: var(--retro-bg);
+  color: var(--retro-salmon);
 }
 
 .msg-send-btn {
-  background: var(--orange-primary);
+  background: var(--retro-salmon);
   color: white;
   box-shadow: 0 2px 8px rgba(230, 72, 51, 0.3);
 }
@@ -885,11 +885,11 @@
   align-items: center;
   gap: 6px;
   padding: 4px 10px;
-  background: var(--orange-soft);
-  border: 1px solid var(--orange-primary);
+  background: var(--retro-bg);
+  border: 1px solid var(--retro-salmon);
   border-radius: 16px;
   font-size: 12px;
-  color: var(--orange-primary);
+  color: var(--retro-salmon);
 }
 
 .msg-attachment-chip button {
@@ -1032,8 +1032,8 @@
 }
 
 .msg-category-tab.active {
-  background: var(--orange-soft);
-  color: var(--orange-primary);
+  background: var(--retro-bg);
+  color: var(--retro-salmon);
 }
 
 /* ── New DM / Team Button ── */
@@ -1123,9 +1123,9 @@
 }
 
 .msg-poll-option.voted {
-  border-color: var(--orange-primary);
+  border-color: var(--retro-salmon);
   box-shadow: 0 4px 12px rgba(230, 72, 51, 0.1);
-  background: var(--orange-soft);
+  background: var(--retro-bg);
 }
 
 .msg-poll-option-content {
@@ -1157,8 +1157,8 @@
 }
 
 .msg-poll-checkbox.checked {
-  background: var(--orange-primary);
-  border-color: var(--orange-primary);
+  background: var(--retro-salmon);
+  border-color: var(--retro-salmon);
   color: white;
 }
 
@@ -1193,9 +1193,9 @@
 }
 
 .msg-poll-option.voted .msg-poll-option-count {
-  background: var(--orange-primary);
+  background: var(--retro-salmon);
   color: white;
-  border-color: var(--orange-primary);
+  border-color: var(--retro-salmon);
 }
 
 .msg-poll-progress-bg {
@@ -1221,7 +1221,7 @@
 .msg-poll-view-votes {
   margin-top: 18px;
   font-size: 13px;
-  color: var(--orange-primary);
+  color: var(--retro-salmon);
   background: transparent;
   border: none;
   cursor: pointer;
@@ -1262,7 +1262,7 @@
 }
 
 .msg-search-bar input:focus {
-  border-color: var(--orange-primary);
+  border-color: var(--retro-salmon);
 }
 
 /* ── Group Settings Panel ── */
@@ -1301,7 +1301,7 @@
 
 .msg-action-btn:hover {
   background: #f1f5f9;
-  color: var(--orange-primary);
+  color: var(--retro-salmon);
 }
 
 /* ── Reaction Chips ── */
@@ -1331,8 +1331,8 @@
 }
 
 .msg-reaction-pill.self {
-  background: var(--orange-soft);
-  border-color: var(--orange-primary);
+  background: var(--retro-bg);
+  border-color: var(--retro-salmon);
 }
 
 .msg-reaction-emoji {
@@ -1346,7 +1346,7 @@
 }
 
 .msg-reaction-pill.self .msg-reaction-count {
-  color: var(--orange-primary);
+  color: var(--retro-salmon);
 }
 
 /* ── Emoji Picker ── */
@@ -1374,7 +1374,7 @@
 
 .msg-action-btn-circle:hover {
   background: #f8fafc !important;
-  color: var(--orange-primary);
+  color: var(--retro-salmon);
   transform: scale(1.1);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
@@ -1632,7 +1632,7 @@
 }
 
 .msg-pinned-icon {
-  color: var(--orange-primary);
+  color: var(--retro-salmon);
   display: flex;
   align-items: center;
   justify-content: center;

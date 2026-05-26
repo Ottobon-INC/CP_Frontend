@@ -28,17 +28,17 @@ export function SessionRecordings() {
   return (
     <div className="mt-8 border-t border-border-soft pt-6">
       <div className="flex justify-between items-center mb-5">
-        <h4 className="text-[0.95rem] font-bold text-dark-text flex items-center gap-2">
-          <i className="fas fa-video text-orange-primary" /> Past Session Recordings
+        <h4 className="text-[0.95rem] font-bold text-retro-teal flex items-center gap-2">
+          <i className="fas fa-video text-retro-salmon" /> Past Session Recordings
         </h4>
-        <button className="text-[0.7rem] font-bold text-gray-400 hover:text-dark-text uppercase tracking-widest transition-colors">
+        <button className="text-[0.7rem] font-bold text-gray-400 hover:text-retro-teal uppercase tracking-widest transition-colors">
           View All <i className="fas fa-chevron-right ml-1" />
         </button>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {mockRecordings.map((session) => (
-          <div key={session.id} className="group bg-gray-50/50 rounded-xl overflow-hidden border border-border-soft hover:border-orange-primary/30 transition-all cursor-pointer">
+          <div key={session.id} className="group bg-gray-50/50 rounded-xl overflow-hidden border border-retro-sage/20 hover:border-retro-salmon/30 transition-all cursor-pointer">
             <div className="relative aspect-video bg-gray-200">
               <img 
                 src={session.thumbnail} 
@@ -46,7 +46,7 @@ export function SessionRecordings() {
                 className="w-full h-full object-cover transition-transform group-hover:scale-105" 
               />
               <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors flex items-center justify-center">
-                <div className="w-10 h-10 rounded-full bg-white/90 flex items-center justify-center text-orange-primary shadow-lg transform scale-90 group-hover:scale-100 transition-transform">
+                <div className="w-10 h-10 rounded-full bg-white/90 flex items-center justify-center text-retro-salmon shadow-lg transform scale-90 group-hover:scale-100 transition-transform">
                   <i className="fas fa-play ml-1" />
                 </div>
               </div>
@@ -55,7 +55,7 @@ export function SessionRecordings() {
               </div>
             </div>
             <div className="p-3">
-              <h5 className="text-[0.8rem] font-bold text-dark-text leading-tight mb-1 line-clamp-2 group-hover:text-orange-primary transition-colors">
+              <h5 className="text-[0.8rem] font-bold text-retro-teal leading-tight mb-1 line-clamp-2 group-hover:text-retro-salmon transition-colors">
                 {session.title}
               </h5>
               <p className="text-[0.65rem] text-gray-400 font-medium">{session.date}</p>

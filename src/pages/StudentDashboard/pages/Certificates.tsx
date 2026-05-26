@@ -62,7 +62,7 @@ export function Certificates() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-primary"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-retro-salmon"></div>
       </div>
     );
   }
@@ -71,11 +71,11 @@ export function Certificates() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] text-center p-8">
         <i className="fas fa-exclamation-circle text-red-500 text-4xl mb-4" />
-        <h3 className="text-xl font-bold text-dark-text mb-2">Failed to load certificates</h3>
+        <h3 className="text-lg font-bold text-retro-teal text-retro-teal mb-2">Failed to load certificates</h3>
         <p className="text-gray-500 mb-6">There was an error connecting to the server.</p>
         <button 
           onClick={() => window.location.reload()}
-          className="bg-orange-primary text-white px-6 py-2 rounded-xl font-bold hover:brightness-110 transition-all"
+          className="bg-retro-salmon text-white px-6 py-2 rounded-xl font-bold hover:brightness-110 transition-all"
         >
           Try Again
         </button>
@@ -189,7 +189,7 @@ export function Certificates() {
                         href={`/course/${cert.courseSlug}/congrats/certificate`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="bg-orange-primary text-white rounded-lg px-2.5 py-2 text-[0.75rem] flex items-center justify-center gap-1.5 hover:bg-orange-600 hover:scale-105 transition-all flex-1 font-bold shadow-sm"
+                        className="bg-retro-salmon text-white rounded-lg px-2.5 py-2 text-[0.75rem] flex items-center justify-center gap-1.5 hover:bg-orange-600 hover:scale-105 transition-all flex-1 font-bold shadow-sm"
                       >
                         <i className="fas fa-download"></i> Download
                       </Link>

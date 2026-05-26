@@ -5,7 +5,7 @@ export function Analysis() {
   return (
     <div className="animate-fade-in pb-16">
       <div className="mb-8">
-        <h2 className="text-[1.8rem] font-bold text-dark-text font-sans mt-2">Learning Insights</h2>
+        <h2 className="text-[1.8rem] font-bold text-retro-teal font-sans mt-2">Learning Insights</h2>
         <p className="text-gray-500 mt-1 font-medium text-[0.9rem]">Understand your performance and improve smarter</p>
       </div>
 
@@ -13,7 +13,7 @@ export function Analysis() {
         <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 flex flex-col justify-between hover:shadow-md transition-shadow">
           <div>
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-[1.05rem] font-bold text-dark-text">You are improving by</h3>
+              <h3 className="text-[1.05rem] font-bold text-retro-teal">You are improving by</h3>
               <i className="fas fa-ellipsis-h text-gray-400 cursor-pointer hover:text-gray-600"></i>
             </div>
             <div className="flex items-center gap-3 mb-6">
@@ -24,16 +24,16 @@ export function Analysis() {
             </div>
             <div className="space-y-4">
               <div className="flex items-center gap-3">
-                <i className="fas fa-bullseye text-orange-primary text-sm w-5 text-center"></i>
-                <div className="text-[0.85rem] font-medium text-gray-600">Your weakest area: <span className="font-bold text-orange-primary">React Hooks</span></div>
+                <i className="fas fa-bullseye text-retro-salmon text-sm w-5 text-center"></i>
+                <div className="text-[0.85rem] font-medium text-gray-600">Your weakest area: <span className="font-bold text-retro-salmon">React Hooks</span></div>
               </div>
               <div className="flex items-center gap-3">
-                <i className="fas fa-star text-orange-primary text-sm w-5 text-center"></i>
-                <div className="text-[0.85rem] text-dark-text font-medium">Strongest area: JavaScript fundamentals</div>
+                <i className="fas fa-star text-retro-salmon text-sm w-5 text-center"></i>
+                <div className="text-[0.85rem] text-retro-teal font-medium">Strongest area: JavaScript fundamentals</div>
               </div>
               <div className="flex items-center gap-3">
-                <i className="fas fa-medal text-orange-primary text-sm w-5 text-center"></i>
-                <div className="text-[0.85rem] text-dark-text font-medium">Ahead of <span className="font-bold text-orange-primary">70%</span> learners</div>
+                <i className="fas fa-medal text-retro-salmon text-sm w-5 text-center"></i>
+                <div className="text-[0.85rem] text-retro-teal font-medium">Ahead of <span className="font-bold text-retro-salmon">70%</span> learners</div>
               </div>
             </div>
           </div>
@@ -42,14 +42,14 @@ export function Analysis() {
               Actionable insight: Let vousIlusi the AI helper to enkanore the insight.
             </p>
             <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
-              <i className="fas fa-robot text-orange-primary"></i>
+              <i className="fas fa-robot text-retro-salmon"></i>
             </div>
           </div>
         </div>
 
         <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow">
           <div className="flex justify-between items-center mb-6">
-            <h3 className="text-[0.9rem] font-bold text-dark-text uppercase tracking-wide">Weekly/Monthly Score Evolution</h3>
+            <h3 className="text-[0.9rem] font-bold text-retro-teal uppercase tracking-wide">Weekly/Monthly Score Evolution</h3>
             <i className="fas fa-ellipsis-h text-gray-400 cursor-pointer hover:text-gray-600"></i>
           </div>
           <div className="h-[200px] w-full">
@@ -74,7 +74,7 @@ export function Analysis() {
 
         <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow">
           <div className="flex justify-between items-center mb-6">
-            <h3 className="text-[0.9rem] font-bold text-dark-text uppercase tracking-wide">Performance by Course</h3>
+            <h3 className="text-[0.9rem] font-bold text-retro-teal uppercase tracking-wide">Performance by Course</h3>
             <i className="fas fa-ellipsis-h text-gray-400 cursor-pointer hover:text-gray-600"></i>
           </div>
           <div className="h-[200px] w-full">
@@ -95,13 +95,13 @@ export function Analysis() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow">
           <div className="flex justify-between items-center mb-6">
-            <h3 className="text-[0.95rem] font-bold text-dark-text">Special Skill Analysis</h3>
+            <h3 className="text-[0.95rem] font-bold text-retro-teal">Special Skill Analysis</h3>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-1.5 text-[0.65rem] font-bold uppercase tracking-wide">
                 <span className="w-2.5 h-2.5 bg-red-500 rounded-sm"></span> Weak
               </div>
               <div className="flex items-center gap-1.5 text-[0.65rem] font-bold uppercase tracking-wide">
-                <span className="w-2.5 h-2.5 bg-dark-teal rounded-sm"></span> Strong
+                <span className="w-2.5 h-2.5 bg-retro-teal rounded-sm"></span> Strong
               </div>
               <i className="fas fa-ellipsis-h text-gray-400 cursor-pointer hover:text-gray-600 ml-2"></i>
             </div>
@@ -126,10 +126,10 @@ export function Analysis() {
                 <div key={s.label}>
                   <div className="flex justify-between items-end mb-2">
                     <span className="text-[0.85rem] font-bold text-gray-600 tracking-wide uppercase">{s.label}</span>
-                    <span className="text-[0.85rem] font-extrabold text-dark-text">{s.val}%</span>
+                    <span className="text-[0.85rem] font-extrabold text-retro-teal">{s.val}%</span>
                   </div>
                   <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden shadow-inner">
-                    <div className="bg-orange-primary h-full rounded-full shadow-sm" style={{ width: `${s.val}%` }}></div>
+                    <div className="bg-retro-salmon h-full rounded-full shadow-sm" style={{ width: `${s.val}%` }}></div>
                   </div>
                 </div>
               ))}
@@ -140,7 +140,7 @@ export function Analysis() {
         <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow flex flex-col justify-between">
           <div className="mb-6">
             <div className="flex justify-between items-center">
-              <h3 className="text-[0.95rem] font-bold text-dark-text">Core improvement recommendations</h3>
+              <h3 className="text-[0.95rem] font-bold text-retro-teal">Core improvement recommendations</h3>
               <i className="fas fa-ellipsis-h text-gray-400 cursor-pointer hover:text-gray-600"></i>
             </div>
             <p className="text-[0.75rem] text-gray-400 font-medium mt-1">AI-powered suggestions to improve your coding profile.</p>
@@ -152,8 +152,8 @@ export function Analysis() {
               { text: 'Complete pending assignments to boost rank', btn: 'Go to Assignments' },
               { text: 'Master Next.js Server Components', btn: 'Go to Course' }
             ].map((rec, idx) => (
-              <div key={idx} className="bg-gray-50 rounded-2xl p-5 min-w-[200px] flex flex-col justify-between border border-gray-100 shadow-sm hover:border-orange-primary/20 transition-colors group">
-                <p className="text-[0.8rem] text-gray-700 font-bold leading-relaxed mb-6 group-hover:text-dark-text">{rec.text}</p>
+              <div key={idx} className="bg-gray-50 rounded-2xl p-5 min-w-[200px] flex flex-col justify-between border border-gray-100 shadow-sm hover:border-retro-salmon/20 transition-colors group">
+                <p className="text-[0.8rem] text-gray-700 font-bold leading-relaxed mb-6 group-hover:text-retro-teal">{rec.text}</p>
                 <button className="bg-orange-600 hover:bg-orange-700 text-white text-[0.75rem] font-bold rounded-lg px-4 py-2.5 w-full transition-all transform hover:-translate-y-0.5 shadow-sm">
                   {rec.btn}
                 </button>
@@ -166,25 +166,25 @@ export function Analysis() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow">
           <div className="flex justify-between items-center mb-6">
-            <h3 className="text-[0.85rem] font-bold text-dark-text uppercase tracking-wide">Goal tracking</h3>
+            <h3 className="text-[0.85rem] font-bold text-retro-teal uppercase tracking-wide">Goal tracking</h3>
             <i className="fas fa-ellipsis-h text-gray-400 cursor-pointer hover:text-gray-600"></i>
           </div>
           <p className="text-[0.7rem] text-gray-400 font-bold uppercase tracking-widest leading-none mb-1">Your goal:</p>
-          <p className="text-[0.95rem] font-extrabold text-dark-text mb-6">Become Frontend Developer</p>
+          <p className="text-[0.95rem] font-extrabold text-retro-teal mb-6">Become Frontend Developer</p>
           <div>
             <div className="flex justify-between text-[0.75rem] font-bold text-gray-400 mb-2">
               <span>Progress</span>
-              <span className="text-orange-primary">65%</span>
+              <span className="text-retro-salmon">65%</span>
             </div>
             <div className="w-full bg-gray-100 rounded-full h-2 shadow-inner">
-              <div className="bg-orange-primary h-full rounded-full transition-all" style={{ width: '65%' }}></div>
+              <div className="bg-retro-salmon h-full rounded-full transition-all" style={{ width: '65%' }}></div>
             </div>
           </div>
         </div>
 
         <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow">
           <div className="flex justify-between items-center mb-6">
-            <h3 className="text-[0.85rem] font-bold text-dark-text uppercase tracking-wide">Comparative Insights</h3>
+            <h3 className="text-[0.85rem] font-bold text-retro-teal uppercase tracking-wide">Comparative Insights</h3>
             <i className="fas fa-ellipsis-h text-gray-400 cursor-pointer hover:text-gray-600"></i>
           </div>
           <div className="space-y-4">
@@ -193,7 +193,7 @@ export function Analysis() {
               <span className="text-[0.75rem] font-bold text-gray-600 leading-tight">Ahead of 70% of learners</span>
             </div>
             <div className="flex items-center gap-3">
-              <i className="fas fa-trophy text-orange-primary text-sm"></i>
+              <i className="fas fa-trophy text-retro-salmon text-sm"></i>
               <span className="text-[0.75rem] font-bold text-gray-600 leading-tight">Rank improved by 3 positions</span>
             </div>
             <div className="flex items-center gap-3">
@@ -205,23 +205,23 @@ export function Analysis() {
 
         <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-[0.85rem] font-bold text-dark-text uppercase tracking-wide">Consistency</h3>
+            <h3 className="text-[0.85rem] font-bold text-retro-teal uppercase tracking-wide">Consistency</h3>
             <i className="fas fa-ellipsis-h text-gray-400 cursor-pointer hover:text-gray-600"></i>
           </div>
           <div className="flex items-center gap-2 mb-4">
-            <i className="fas fa-fire text-orange-primary"></i>
-            <span className="text-[0.75rem] font-extrabold text-dark-text tracking-wide uppercase">5-day learning streak</span>
+            <i className="fas fa-fire text-retro-salmon"></i>
+            <span className="text-[0.75rem] font-extrabold text-retro-teal tracking-wide uppercase">5-day learning streak</span>
           </div>
           <div className="grid grid-cols-7 gap-1.5 justify-center">
             {Array.from({ length: 35 }).map((_, i) => (
-              <div key={i} className={`w-3.5 h-3.5 rounded-sm shadow-sm ${i % 7 === 0 ? 'bg-dark-teal' : i % 5 === 0 ? 'bg-orange-300' : 'bg-gray-100'}`}></div>
+              <div key={i} className={`w-3.5 h-3.5 rounded-sm shadow-sm ${i % 7 === 0 ? 'bg-retro-teal' : i % 5 === 0 ? 'bg-orange-300' : 'bg-gray-100'}`}></div>
             ))}
           </div>
         </div>
 
         <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-[0.85rem] font-bold text-dark-text uppercase tracking-wide">Achievements</h3>
+            <h3 className="text-[0.85rem] font-bold text-retro-teal uppercase tracking-wide">Achievements</h3>
             <i className="fas fa-ellipsis-h text-gray-400 cursor-pointer hover:text-gray-600"></i>
           </div>
           <div className="flex justify-center items-center gap-4 mb-6">
@@ -247,10 +247,10 @@ export function Analysis() {
           <div>
             <div className="flex justify-between text-[0.65rem] font-bold text-gray-400 uppercase tracking-wider mb-2">
               <span>Next Milestone</span>
-              <span className="text-orange-primary font-extrabold">70%</span>
+              <span className="text-retro-salmon font-extrabold">70%</span>
             </div>
             <div className="w-full bg-gray-100 rounded-full h-1.5 mb-1 shadow-inner">
-              <div className="bg-orange-primary h-full rounded-full" style={{ width: '70%' }}></div>
+              <div className="bg-retro-salmon h-full rounded-full" style={{ width: '70%' }}></div>
             </div>
           </div>
         </div>

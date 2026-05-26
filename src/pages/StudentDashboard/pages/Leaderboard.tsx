@@ -12,7 +12,7 @@ function ActivityItem({ activity }: { activity: ActivityItemType }) {
       </div>
       <div className="flex flex-col">
         <p className="text-[0.85rem] leading-snug">
-          <span className="font-bold text-dark-text group-hover:text-orange-primary transition-colors">{activity.user}</span>
+          <span className="font-bold text-retro-teal group-hover:text-retro-salmon transition-colors">{activity.user}</span>
           <span className="text-gray-500 ml-1.5">{activity.action}</span>
         </p>
         <span className="text-[0.7rem] text-gray-400 font-bold mt-1 uppercase tracking-tight">{activity.timestamp}</span>
@@ -23,17 +23,17 @@ function ActivityItem({ activity }: { activity: ActivityItemType }) {
 
 function ActivityPanel() {
   return (
-    <div className="bg-white rounded-[2rem] shadow-sm border border-border-soft p-7 h-fit hover:shadow-md transition-all">
+    <div className="bg-white rounded-[2rem] shadow-sm border border-retro-sage/20 p-7 h-fit hover:shadow-md transition-all">
       <div className="flex items-center justify-between mb-8 px-1">
-        <h3 className="text-lg font-bold text-dark-text">Recent Activity</h3>
-        <span className="text-[0.7rem] font-bold text-orange-primary bg-orange-soft px-3 py-1 rounded-full uppercase tracking-wider border border-orange-100 shadow-sm">Live Feed</span>
+        <h3 className="text-lg font-bold text-retro-teal">Recent Activity</h3>
+        <span className="text-[0.7rem] font-bold text-retro-salmon bg-retro-bg px-3 py-1 rounded-full uppercase tracking-wider border border-orange-100 shadow-sm">Live Feed</span>
       </div>
       <div className="space-y-7 max-h-[500px] overflow-y-auto custom-scrollbar pr-2">
         {RECENT_ACTIVITIES.map((activity) => (
           <ActivityItem key={activity.id} activity={activity} />
         ))}
       </div>
-      <button className="w-full mt-10 py-4 text-[0.85rem] font-bold text-gray-400 border border-border-soft rounded-2xl hover:bg-gray-50 hover:text-dark-text hover:border-orange-200 transition-all shadow-sm">View All History</button>
+      <button className="w-full mt-10 py-4 text-[0.85rem] font-bold text-gray-400 border border-retro-sage/20 rounded-2xl hover:bg-gray-50 hover:text-retro-teal hover:border-orange-200 transition-all shadow-sm">View All History</button>
     </div>
   );
 }
@@ -51,21 +51,21 @@ function FilterBar({ view, setView }: { view: string, setView: (v: 'score' | 'ac
   const COHORTS = ['All Cohorts', 'Cohort 2026 - A', 'Cohort 2026 - B'];
   const TIMES = ['Today', 'This Week', 'This Month', 'Last 3 Months', 'All Time'];
 
-  const dropdownStyle = "bg-white border border-border-soft px-4 py-2 rounded-lg transition-all hover:shadow-md hover:border-gray-200 flex items-center justify-between min-w-[170px] cursor-pointer group relative z-10";
+  const dropdownStyle = "bg-white border border-retro-sage/20 px-4 py-2 rounded-lg transition-all hover:shadow-md hover:border-gray-200 flex items-center justify-between min-w-[170px] cursor-pointer group relative z-10";
 
   return (
     <div className="flex gap-4 items-center flex-wrap mb-10">
       <div className="relative">
         <div className={dropdownStyle} onClick={() => { setIsCourseOpen(!isCourseOpen); setIsCohortOpen(false); setIsTimeOpen(false); }}>
-          <span className="text-[0.85rem] font-medium text-gray-500">Course: <span className="font-bold text-dark-text ml-1.5">{course}</span></span>
-          <i className={`fas fa-chevron-down text-[0.7rem] ml-4 text-gray-400 group-hover:text-orange-primary transition-all ${isCourseOpen ? 'rotate-180 text-orange-primary' : ''}`}></i>
+          <span className="text-[0.85rem] font-medium text-gray-500">Course: <span className="font-bold text-retro-teal ml-1.5">{course}</span></span>
+          <i className={`fas fa-chevron-down text-[0.7rem] ml-4 text-gray-400 group-hover:text-retro-salmon transition-all ${isCourseOpen ? 'rotate-180 text-retro-salmon' : ''}`}></i>
         </div>
         {isCourseOpen && (
           <div className="absolute top-14 left-0 w-full bg-white border border-gray-100 rounded-2xl shadow-xl z-50 py-2 animate-fade-in">
             {COURSES.map((c) => (
               <div
                 key={c}
-                className="px-5 py-2.5 text-sm font-bold text-gray-600 hover:bg-orange-50 hover:text-orange-primary cursor-pointer transition-colors"
+                className="px-5 py-2.5 text-sm font-bold text-gray-600 hover:bg-orange-50 hover:text-retro-salmon cursor-pointer transition-colors"
                 onClick={() => { setCourse(c); setIsCourseOpen(false); }}
               >
                 {c}
@@ -77,15 +77,15 @@ function FilterBar({ view, setView }: { view: string, setView: (v: 'score' | 'ac
 
       <div className="relative">
         <div className={dropdownStyle} onClick={() => { setIsCohortOpen(!isCohortOpen); setIsCourseOpen(false); setIsTimeOpen(false); }}>
-          <span className="text-[0.85rem] font-medium text-gray-500">Cohort: <span className="font-bold text-dark-text ml-1.5">{cohort}</span></span>
-          <i className={`fas fa-chevron-down text-[0.7rem] ml-4 text-gray-400 group-hover:text-orange-primary transition-all ${isCohortOpen ? 'rotate-180 text-orange-primary' : ''}`}></i>
+          <span className="text-[0.85rem] font-medium text-gray-500">Cohort: <span className="font-bold text-retro-teal ml-1.5">{cohort}</span></span>
+          <i className={`fas fa-chevron-down text-[0.7rem] ml-4 text-gray-400 group-hover:text-retro-salmon transition-all ${isCohortOpen ? 'rotate-180 text-retro-salmon' : ''}`}></i>
         </div>
         {isCohortOpen && (
           <div className="absolute top-14 left-0 w-full bg-white border border-gray-100 rounded-2xl shadow-xl z-50 py-2 animate-fade-in">
             {COHORTS.map((c) => (
               <div
                 key={c}
-                className="px-5 py-2.5 text-sm font-bold text-gray-600 hover:bg-orange-50 hover:text-orange-primary cursor-pointer transition-colors"
+                className="px-5 py-2.5 text-sm font-bold text-gray-600 hover:bg-orange-50 hover:text-retro-salmon cursor-pointer transition-colors"
                 onClick={() => { setCohort(c); setIsCohortOpen(false); }}
               >
                 {c}
@@ -97,15 +97,15 @@ function FilterBar({ view, setView }: { view: string, setView: (v: 'score' | 'ac
 
       <div className="relative">
         <div className={dropdownStyle} onClick={() => { setIsTimeOpen(!isTimeOpen); setIsCourseOpen(false); setIsCohortOpen(false); }}>
-          <span className="text-[0.85rem] font-medium text-gray-500">Range: <span className="font-bold text-dark-text ml-1.5">{timeRange}</span></span>
-          <i className={`fas fa-chevron-down text-[0.7rem] ml-4 text-gray-400 group-hover:text-orange-primary transition-all ${isTimeOpen ? 'rotate-180 text-orange-primary' : ''}`}></i>
+          <span className="text-[0.85rem] font-medium text-gray-500">Range: <span className="font-bold text-retro-teal ml-1.5">{timeRange}</span></span>
+          <i className={`fas fa-chevron-down text-[0.7rem] ml-4 text-gray-400 group-hover:text-retro-salmon transition-all ${isTimeOpen ? 'rotate-180 text-retro-salmon' : ''}`}></i>
         </div>
         {isTimeOpen && (
           <div className="absolute top-14 left-0 w-full bg-white border border-gray-100 rounded-2xl shadow-xl z-50 py-2 animate-fade-in">
             {TIMES.map((t) => (
               <div
                 key={t}
-                className="px-5 py-2.5 text-sm font-bold text-gray-600 hover:bg-orange-50 hover:text-orange-primary cursor-pointer transition-colors"
+                className="px-5 py-2.5 text-sm font-bold text-gray-600 hover:bg-orange-50 hover:text-retro-salmon cursor-pointer transition-colors"
                 onClick={() => { setTimeRange(t); setIsTimeOpen(false); }}
               >
                 {t}
@@ -115,16 +115,16 @@ function FilterBar({ view, setView }: { view: string, setView: (v: 'score' | 'ac
         )}
       </div>
 
-      <div className="ml-auto flex items-center gap-2 bg-white/60 p-1.5 rounded-2xl border border-border-soft shadow-inner">
+      <div className="ml-auto flex items-center gap-2 bg-white/60 p-1.5 rounded-2xl border border-retro-sage/20 shadow-inner">
         <button
           onClick={() => setView('score')}
-          className={`${view === 'score' ? 'bg-white text-dark-text shadow-md' : 'text-gray-400'} px-6 py-2 rounded-xl font-bold font-sans text-[0.85rem] transition-all hover:scale-[1.05] border border-transparent active:scale-95`}
+          className={`${view === 'score' ? 'bg-white text-retro-teal shadow-md' : 'text-gray-400'} px-6 py-2 rounded-xl font-bold font-sans text-[0.85rem] transition-all hover:scale-[1.05] border border-transparent active:scale-95`}
         >
           Score
         </button>
         <button
           onClick={() => setView('activity')}
-          className={`${view === 'activity' ? 'bg-white text-dark-text shadow-md' : 'text-gray-400'} px-6 py-2 rounded-xl font-bold font-sans text-[0.85rem] transition-all hover:scale-[1.05] border border-transparent active:scale-95 flex items-center gap-2`}
+          className={`${view === 'activity' ? 'bg-white text-retro-teal shadow-md' : 'text-gray-400'} px-6 py-2 rounded-xl font-bold font-sans text-[0.85rem] transition-all hover:scale-[1.05] border border-transparent active:scale-95 flex items-center gap-2`}
         >
           Activity <i className="fas fa-chart-line text-[0.75rem]"></i>
         </button>
@@ -140,23 +140,23 @@ function CourseDropdown({ cohorts, selectedId, onSelect }: { cohorts: any[], sel
   return (
     <div className="relative mb-8">
       <div 
-        className="bg-white border border-border-soft px-6 py-4 rounded-2xl shadow-sm hover:shadow-md transition-all flex items-center justify-between cursor-pointer group w-full sm:max-w-md border-l-4 border-l-orange-primary"
+        className="bg-white border border-retro-sage/20 px-6 py-4 rounded-2xl shadow-sm hover:shadow-md transition-all flex items-center justify-between cursor-pointer group w-full sm:max-w-md border-l-4 border-l-retro-salmon"
         onClick={() => setIsOpen(!isOpen)}
       >
         <div className="flex items-center gap-4">
-          <div className="w-10 h-10 rounded-xl bg-orange-soft flex items-center justify-center text-orange-primary">
+          <div className="w-10 h-10 rounded-xl bg-retro-bg flex items-center justify-center text-retro-salmon">
             <i className="fas fa-book-open" />
           </div>
           <div className="flex flex-col">
             <span className="text-[0.65rem] font-black text-gray-400 uppercase tracking-widest">Active Cohort</span>
-            <span className="text-base font-black text-dark-text leading-tight">
+            <span className="text-base font-black text-retro-teal leading-tight">
               {selectedCohort ? selectedCohort.title : 'Switch Course'}
             </span>
           </div>
         </div>
         <div className="flex items-center gap-3">
           <span className="text-[0.7rem] font-bold text-gray-300 hidden sm:inline">Change Course</span>
-          <i className={`fas fa-chevron-down text-gray-400 group-hover:text-orange-primary transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+          <i className={`fas fa-chevron-down text-gray-400 group-hover:text-retro-salmon transition-transform ${isOpen ? 'rotate-180' : ''}`} />
         </div>
       </div>
 
@@ -173,7 +173,7 @@ function CourseDropdown({ cohorts, selectedId, onSelect }: { cohorts: any[], sel
                   key={cohort.id}
                   className={`px-5 py-3.5 text-sm font-bold transition-all cursor-pointer flex items-center justify-between mx-2 rounded-xl mb-1 ${
                     selectedId === cohort.courseId 
-                      ? 'bg-orange-soft text-orange-primary shadow-sm' 
+                      ? 'bg-retro-bg text-retro-salmon shadow-sm' 
                       : 'text-gray-600 hover:bg-gray-50'
                   }`}
                   onClick={() => {
@@ -182,10 +182,10 @@ function CourseDropdown({ cohorts, selectedId, onSelect }: { cohorts: any[], sel
                   }}
                 >
                   <div className="flex items-center gap-3">
-                    <div className={`w-2 h-2 rounded-full ${selectedId === cohort.courseId ? 'bg-orange-primary animate-pulse' : 'bg-gray-200'}`} />
+                    <div className={`w-2 h-2 rounded-full ${selectedId === cohort.courseId ? 'bg-retro-salmon animate-pulse' : 'bg-gray-200'}`} />
                     <span>{cohort.title}</span>
                   </div>
-                  {selectedId === cohort.courseId && <i className="fas fa-check-circle text-orange-primary" />}
+                  {selectedId === cohort.courseId && <i className="fas fa-check-circle text-retro-salmon" />}
                 </div>
               ))}
             </div>
@@ -211,7 +211,7 @@ export function Leaderboard() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-primary"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-retro-salmon"></div>
       </div>
     );
   }
@@ -232,27 +232,27 @@ export function Leaderboard() {
       
       <div className="grid grid-cols-1 md:grid-cols-[1fr_340px] gap-8">
         <div>
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-border-soft mb-8">
-            <h2 className="text-2xl font-extrabold text-dark-text mb-2">My Performance</h2>
-            <p className="text-gray-text">Detailed analysis of your growth and achievements in your cohorts</p>
+          <div className="bg-white/95 backdrop-blur-sm p-8 rounded-xl shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-retro-sage/20 mb-8">
+            <h2 className="text-2xl font-extrabold text-retro-teal mb-2">My Performance</h2>
+            <p className="text-retro-teal/60">Detailed analysis of your growth and achievements in your cohorts</p>
           </div>
 
-          <div className="bg-white p-8 rounded-2xl shadow-sm border border-border-soft mb-8 relative overflow-hidden group">
-            <div className="absolute -right-8 -top-8 w-32 h-32 bg-orange-soft rounded-full blur-3xl opacity-50 group-hover:opacity-80 transition-opacity" />
+          <div className="bg-white p-8 rounded-2xl shadow-sm border border-retro-sage/20 mb-8 relative overflow-hidden group">
+            <div className="absolute -right-8 -top-8 w-32 h-32 bg-retro-bg rounded-full blur-3xl opacity-50 group-hover:opacity-80 transition-opacity" />
             
             <h3 className="text-lg font-bold mb-8 flex items-center gap-2">
-              <i className="fas fa-trophy text-orange-primary" /> Your Current Standing
+              <i className="fas fa-trophy text-retro-salmon" /> Your Current Standing
             </h3>
             
             <div className="flex flex-wrap items-center justify-between gap-8">
               <div className="flex items-center gap-8">
                 <div className="relative">
-                  <div className="absolute inset-0 bg-orange-primary/10 rounded-full animate-pulse" />
-                  <span className="relative text-7xl font-black text-orange-primary leading-none">#{summary?.rank}</span>
+                  <div className="absolute inset-0 bg-retro-salmon/10 rounded-full animate-pulse" />
+                  <span className="relative text-7xl font-black text-retro-salmon leading-none">#{summary?.rank}</span>
                 </div>
                 <div className="flex flex-col">
                   <span className="text-gray-400 text-[0.65rem] font-bold uppercase tracking-widest mb-1">Active Learner</span>
-                  <span className="text-3xl font-black text-dark-text">{summary?.fullName}</span>
+                  <span className="text-3xl font-black text-retro-teal">{summary?.fullName}</span>
                   <div className="flex gap-2 mt-2">
                     <span className="bg-green-50 text-green-600 text-[0.65rem] font-black px-2.5 py-1 rounded-lg border border-green-100 uppercase tracking-tight">
                       Active Streak: {summary?.streak} Days
@@ -263,10 +263,10 @@ export function Leaderboard() {
               
               <div className="text-right">
                 <span className="text-gray-400 text-[0.65rem] font-bold uppercase tracking-widest block mb-1">Total Points Earned</span>
-                <div className="text-5xl font-black text-dark-text leading-tight mb-2 tracking-tighter">
+                <div className="text-5xl font-black text-retro-teal leading-tight mb-2 tracking-tighter">
                   {summary?.totalPoints.toLocaleString()} <span className="text-lg font-bold text-gray-300">PTS</span>
                 </div>
-                <div className="inline-flex items-center gap-1.5 bg-dark-teal/5 text-dark-teal text-xs font-bold px-3 py-1.5 rounded-full">
+                <div className="inline-flex items-center gap-1.5 bg-retro-teal/5 text-retro-teal text-xs font-bold px-3 py-1.5 rounded-full">
                   <i className="fas fa-chart-line" />
                   You're ahead of <span className="font-black">{Math.min(99, 100 - (summary?.rank ?? 1))} %</span> of all learners
                 </div>
@@ -277,11 +277,11 @@ export function Leaderboard() {
               <div className="flex justify-between items-end mb-4">
                 <div className="flex flex-col gap-1">
                   <span className="text-[0.65rem] font-black text-gray-400 uppercase tracking-widest">Performance Comparison</span>
-                  <span className="text-sm font-bold text-dark-text">Your Score vs. Class Average</span>
+                  <span className="text-sm font-bold text-retro-teal">Your Score vs. Class Average</span>
                 </div>
                 <div className="flex gap-6">
                   <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-sm bg-dark-teal" />
+                    <div className="w-3 h-3 rounded-sm bg-retro-teal" />
                     <span className="text-xs font-bold text-gray-500">You ({summary?.totalPoints.toLocaleString()} pts)</span>
                   </div>
                   <div className="flex items-center gap-2 text-gray-400">
@@ -292,7 +292,7 @@ export function Leaderboard() {
               </div>
               <div className="h-4 bg-gray-100 rounded-full relative overflow-hidden">
                 <div 
-                  className="h-full bg-gradient-to-r from-dark-teal to-emerald-400 rounded-full transition-all duration-1000 shadow-sm" 
+                  className="h-full bg-gradient-to-r from-retro-teal to-emerald-400 rounded-full transition-all duration-1000 shadow-sm" 
                   style={{ width: `${Math.min(100, (summary?.totalPoints ?? 0) / (Math.max(summary?.classAverage ?? 1, 1000) * 1.5) * 100)}%` }}
                 />
                 <div 
@@ -307,17 +307,17 @@ export function Leaderboard() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-border-soft hover:border-orange-primary/20 transition-all group">
-              <div className="w-12 h-12 rounded-xl bg-orange-soft flex items-center justify-center text-orange-primary mb-4 group-hover:scale-110 transition-transform">
+            <div className="bg-white/95 backdrop-blur-sm p-8 rounded-xl shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-retro-sage/20 hover:border-retro-salmon/20 transition-all group">
+              <div className="w-12 h-12 rounded-xl bg-retro-bg flex items-center justify-center text-retro-salmon mb-4 group-hover:scale-110 transition-transform">
                 <i className="fas fa-bullseye text-xl" />
               </div>
               <h4 className="text-[0.65rem] font-black text-gray-400 uppercase tracking-widest mb-1">Target Milestone</h4>
-              <p className="text-lg font-black text-dark-text mb-2">
+              <p className="text-lg font-black text-retro-teal mb-2">
                 {summary?.nextMilestoneRank ? `Next Rank: #${summary.nextMilestoneRank}` : 'Top Rank Reached!'}
               </p>
               <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
                 <div 
-                  className="bg-orange-primary h-full transition-all duration-1000" 
+                  className="bg-retro-salmon h-full transition-all duration-1000" 
                   style={{ width: summary?.pointsToNextMilestone === 0 ? '100%' : `${Math.max(10, 100 - (summary?.pointsToNextMilestone ?? 0) / 5)}%` }} 
                 />
               </div>
@@ -328,15 +328,15 @@ export function Leaderboard() {
               </p>
             </div>
 
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-border-soft hover:border-dark-teal/20 transition-all group">
-              <div className="w-12 h-12 rounded-xl bg-dark-teal/5 flex items-center justify-center text-dark-teal mb-4 group-hover:scale-110 transition-transform">
+            <div className="bg-white/95 backdrop-blur-sm p-8 rounded-xl shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-retro-sage/20 hover:border-retro-teal/20 transition-all group">
+              <div className="w-12 h-12 rounded-xl bg-retro-teal/5 flex items-center justify-center text-retro-teal mb-4 group-hover:scale-110 transition-transform">
                 <i className="fas fa-graduation-cap text-xl" />
               </div>
               <h4 className="text-[0.65rem] font-black text-gray-400 uppercase tracking-widest mb-1">Course Progress</h4>
-              <p className="text-lg font-black text-dark-text mb-2">Mastery Level: {Math.min(100, Math.round((summary?.totalPoints ?? 0) / 100))}%</p>
+              <p className="text-lg font-black text-retro-teal mb-2">Mastery Level: {Math.min(100, Math.round((summary?.totalPoints ?? 0) / 100))}%</p>
               <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
                 <div 
-                  className="bg-dark-teal h-full transition-all duration-1000" 
+                  className="bg-retro-teal h-full transition-all duration-1000" 
                   style={{ width: `${Math.min(100, Math.round((summary?.totalPoints ?? 0) / 100))}%` }} 
                 />
               </div>
@@ -348,9 +348,9 @@ export function Leaderboard() {
         </div>
 
         <aside>
-          <div className="bg-white p-7 rounded-[2rem] shadow-sm border border-border-soft mb-8 hover:shadow-md transition-all">
+          <div className="bg-white p-7 rounded-[2rem] shadow-sm border border-retro-sage/20 mb-8 hover:shadow-md transition-all">
             <h3 className="text-lg font-bold mb-8 flex items-center gap-2">
-              <i className="fas fa-chart-pie text-dark-teal" /> Performance Insights
+              <i className="fas fa-chart-pie text-retro-teal" /> Performance Insights
             </h3>
 
             <div className="space-y-6">
@@ -365,14 +365,14 @@ export function Leaderboard() {
               </div>
               <div className="flex justify-between items-center py-4 border-b border-gray-50">
                 <span className="font-bold text-gray-500 text-sm">Learning Velocity</span>
-                <span className="font-black text-dark-text">
+                <span className="font-black text-retro-teal">
                   {summary && summary.totalPoints > 2000 ? 'Excellent' : 'Steady'}
                 </span>
               </div>
               <div className="flex justify-between items-center py-4">
                 <div className="flex flex-col gap-1">
                   <span className="font-bold text-gray-500 text-sm">Recent Accomplishment</span>
-                  <span className="text-xs font-bold text-orange-primary">
+                  <span className="text-xs font-bold text-retro-salmon">
                     Maintained {summary?.streak} day streak!
                   </span>
                 </div>
@@ -384,7 +384,7 @@ export function Leaderboard() {
             </p>
           </div>
 
-          <div className="bg-white p-7 rounded-[2rem] shadow-sm border border-border-soft hover:shadow-md transition-all">
+          <div className="bg-white p-7 rounded-[2rem] shadow-sm border border-retro-sage/20 hover:shadow-md transition-all">
             <h3 className="text-lg font-bold mb-8 flex items-center gap-2">
               <i className="fas fa-award text-yellow-500" /> Your Achievements
             </h3>
@@ -395,33 +395,33 @@ export function Leaderboard() {
                   <div className="w-14 h-14 rounded-full bg-[#FEF3C7] text-[#D97706] flex items-center justify-center text-2xl mb-3 shadow-inner group-hover:scale-110 transition-transform">
                     <i className="fas fa-star" />
                   </div>
-                  <span className="text-[0.7rem] font-black text-dark-text text-center leading-tight uppercase tracking-tighter">Top Performer</span>
+                  <span className="text-[0.7rem] font-black text-retro-teal text-center leading-tight uppercase tracking-tighter">Top Performer</span>
                 </div>
               )}
               {summary && summary.streak > 7 && (
                 <div className="flex flex-col items-center bg-gray-50 p-4 rounded-2xl border border-gray-100 group">
-                  <div className="w-14 h-14 rounded-full bg-orange-soft text-orange-primary flex items-center justify-center text-2xl mb-3 shadow-inner group-hover:scale-110 transition-transform">
+                  <div className="w-14 h-14 rounded-full bg-retro-bg text-retro-salmon flex items-center justify-center text-2xl mb-3 shadow-inner group-hover:scale-110 transition-transform">
                     <i className="fas fa-bolt" />
                   </div>
-                  <span className="text-[0.7rem] font-black text-dark-text text-center leading-tight uppercase tracking-tighter">Fast Learner</span>
+                  <span className="text-[0.7rem] font-black text-retro-teal text-center leading-tight uppercase tracking-tighter">Fast Learner</span>
                 </div>
               )}
               <div className="flex flex-col items-center bg-gray-50 p-4 rounded-2xl border border-gray-100 group col-span-2 mt-2">
                 <div className="flex items-center gap-4 w-full">
                   <div className={`w-12 h-12 rounded-full flex items-center justify-center text-xl shadow-inner group-hover:rotate-12 transition-transform ${
-                    summary && summary.streak > 0 ? 'bg-dark-teal/10 text-dark-teal' : 'bg-gray-100 text-gray-300'
+                    summary && summary.streak > 0 ? 'bg-retro-teal/10 text-retro-teal' : 'bg-gray-100 text-gray-300'
                   }`}>
                     <i className="fas fa-fire" />
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-[0.7rem] font-black text-dark-text uppercase tracking-tighter">Consistency Star</span>
+                    <span className="text-[0.7rem] font-black text-retro-teal uppercase tracking-tighter">Consistency Star</span>
                     <span className="text-[0.6rem] text-gray-400 font-bold">{summary?.streak} Day Streak</span>
                   </div>
                 </div>
               </div>
             </div>
             
-            <button className="w-full mt-8 py-3 text-[0.75rem] font-black text-gray-400 border-2 border-dashed border-gray-200 rounded-xl hover:border-orange-primary/30 hover:text-orange-primary transition-all">
+            <button className="w-full mt-8 py-3 text-[0.75rem] font-black text-gray-400 border-2 border-dashed border-gray-200 rounded-xl hover:border-retro-salmon/30 hover:text-retro-salmon transition-all">
               View All Badges
             </button>
           </div>

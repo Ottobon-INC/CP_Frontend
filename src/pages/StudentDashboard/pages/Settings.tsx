@@ -65,7 +65,7 @@ export function Settings() {
                     type="text"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-medium focus:border-orange-primary outline-none transition-all shadow-sm"
+                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-medium focus:border-retro-salmon outline-none transition-all shadow-sm"
                   />
                 </div>
                 <div>
@@ -74,7 +74,7 @@ export function Settings() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-medium focus:border-orange-primary outline-none transition-all shadow-sm"
+                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-medium focus:border-retro-salmon outline-none transition-all shadow-sm"
                   />
                 </div>
                 <div>
@@ -83,7 +83,7 @@ export function Settings() {
                     type="text"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-medium focus:border-orange-primary outline-none transition-all shadow-sm"
+                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-medium focus:border-retro-salmon outline-none transition-all shadow-sm"
                   />
                 </div>
               </div>
@@ -99,7 +99,7 @@ export function Settings() {
             <label className="block text-[0.7rem] text-gray-400 font-extrabold uppercase tracking-widest mb-4 px-0.5">Learning Preferences</label>
             <div className="flex flex-wrap gap-2 mb-5">
               {skills.map(skill => (
-                <span key={skill} className="bg-gray-100 text-gray-700 text-[0.7rem] font-bold rounded-full px-4 py-1.5 flex items-center gap-2 border border-gray-200 group hover:border-orange-primary/30 transition-colors">
+                <span key={skill} className="bg-gray-100 text-gray-700 text-[0.7rem] font-bold rounded-full px-4 py-1.5 flex items-center gap-2 border border-gray-200 group hover:border-retro-salmon/30 transition-colors">
                   {skill}
                   <i
                     onClick={() => removeSkill(skill)}
@@ -115,9 +115,9 @@ export function Settings() {
                 value={newSkill}
                 onChange={(e) => setNewSkill(e.target.value)}
                 onKeyDown={handleAddSkill}
-                className="w-full border border-gray-200 rounded-xl px-10 py-3 text-sm font-medium focus:border-orange-primary outline-none transition-all shadow-inner bg-gray-50 group-hover:bg-white"
+                className="w-full border border-gray-200 rounded-xl px-10 py-3 text-sm font-medium focus:border-retro-salmon outline-none transition-all shadow-inner bg-gray-50 group-hover:bg-white"
               />
-              <i className="fas fa-plus absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 text-xs group-hover:text-orange-primary transition-colors"></i>
+              <i className="fas fa-plus absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 text-xs group-hover:text-retro-salmon transition-colors"></i>
             </div>
           </div>
         </div>
@@ -130,7 +130,7 @@ export function Settings() {
             <div className="space-y-5">
               {SETTINGS_NOTIFICATION_LABELS.map((label, idx) => (
                 <div key={idx} className="flex items-center justify-between group">
-                  <span className="text-[0.85rem] font-bold text-gray-600 group-hover:text-dark-text transition-colors">{label}</span>
+                  <span className="text-[0.85rem] font-bold text-gray-600 group-hover:text-retro-teal transition-colors">{label}</span>
                   <div
                     onClick={() => toggleNotification(idx)}
                     className={`relative inline-flex h-6 w-11 cursor-pointer rounded-full transition-colors border-2 shadow-inner ${notifications[idx] ? 'bg-orange-600 border-orange-600' : 'bg-gray-200 border-gray-200'}`}
@@ -151,7 +151,7 @@ export function Settings() {
               <div className="bg-gray-100 p-1.5 rounded-2xl flex items-center gap-1 shadow-inner">
                 <button
                   onClick={() => setTheme('light')}
-                  className={`flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-[0.7rem] font-extrabold transition-all ${theme === 'light' ? 'bg-white text-dark-text shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                  className={`flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-[0.7rem] font-extrabold transition-all ${theme === 'light' ? 'bg-white text-retro-teal shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
                 >
                   <i className="fas fa-sun text-[0.6rem]"></i> Light
                 </button>
@@ -170,14 +170,14 @@ export function Settings() {
                 <select
                   value={language}
                   onChange={(e) => setLanguage(e.target.value)}
-                  className="w-full h-11 border border-gray-200 rounded-xl px-4 py-1 text-sm font-medium bg-white appearance-none cursor-pointer focus:border-orange-primary outline-none transition-all shadow-sm"
+                  className="w-full h-11 border border-gray-200 rounded-xl px-4 py-1 text-sm font-medium bg-white appearance-none cursor-pointer focus:border-retro-salmon outline-none transition-all shadow-sm"
                 >
                   <option>English</option>
                   <option>Spanish</option>
                   <option>French</option>
                   <option>German</option>
                 </select>
-                <i className="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-gray-300 text-xs pointer-events-none group-hover:text-orange-primary transition-colors"></i>
+                <i className="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-gray-300 text-xs pointer-events-none group-hover:text-retro-salmon transition-colors"></i>
               </div>
             </div>
           </div>
@@ -204,7 +204,7 @@ export function Settings() {
             </div>
 
             <div>
-              <label className="block text-[0.85rem] font-extrabold text-dark-text mb-1 px-1">Active Sessions</label>
+              <label className="block text-[0.85rem] font-extrabold text-retro-teal mb-1 px-1">Active Sessions</label>
               <p className="text-[0.65rem] text-gray-400 font-bold uppercase tracking-widest mb-5 px-1 leading-none">Device + Browser</p>
 
               <div className="space-y-4">
@@ -218,7 +218,7 @@ export function Settings() {
                         <i className={`fas ${session.device.includes('MacBook') ? 'fa-laptop' : 'fa-mobile-alt'} text-xs`}></i>
                       </div>
                       <div>
-                        <p className="text-[0.75rem] font-extrabold text-dark-text">{session.device}</p>
+                        <p className="text-[0.75rem] font-extrabold text-retro-teal">{session.device}</p>
                         <p className="text-[0.65rem] text-green-500 font-bold">{session.status}</p>
                       </div>
                     </div>
@@ -234,8 +234,8 @@ export function Settings() {
             <label className="block text-[0.7rem] text-gray-400 font-extrabold uppercase tracking-widest mb-6 px-0.5">Account Actions</label>
 
             <div className="grid grid-cols-2 gap-3 mb-6">
-              <a href="https://learn.ottobon.in" className="border border-gray-200 rounded-xl py-2.5 text-[0.75rem] font-extrabold text-gray-600 hover:bg-gray-50 hover:text-dark-text transition-all text-center">Logout</a>
-              <button className="border border-gray-200 rounded-xl py-2.5 text-[0.75rem] font-extrabold text-gray-600 hover:bg-gray-50 hover:text-dark-text transition-all">Reset All</button>
+              <a href="https://learn.ottobon.in" className="border border-gray-200 rounded-xl py-2.5 text-[0.75rem] font-extrabold text-gray-600 hover:bg-gray-50 hover:text-retro-teal transition-all text-center">Logout</a>
+              <button className="border border-gray-200 rounded-xl py-2.5 text-[0.75rem] font-extrabold text-gray-600 hover:bg-gray-50 hover:text-retro-teal transition-all">Reset All</button>
             </div>
 
             <div className="bg-red-50 border border-red-100 rounded-2xl p-5">

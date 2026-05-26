@@ -62,7 +62,7 @@ export function LiveSessions() {
       {/* Header with Dropdown */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-dark-text tracking-tight">Cohort Live Sessions</h1>
+          <h1 className="text-2xl font-bold text-retro-teal tracking-tight">Cohort Live Sessions</h1>
           <p className="text-gray-500 mt-1 font-medium">Join live classes and watch recordings</p>
         </div>
 
@@ -72,7 +72,7 @@ export function LiveSessions() {
             className="flex items-center justify-between gap-3 bg-white border border-gray-100 px-5 py-3 rounded-2xl shadow-sm hover:shadow-md transition-all min-w-[280px]"
           >
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-orange-primary/10 flex items-center justify-center text-orange-primary">
+              <div className="w-8 h-8 rounded-full bg-retro-salmon/10 flex items-center justify-center text-retro-salmon">
                 <Video size={16} />
               </div>
               <span className="text-sm font-bold text-gray-700">{selectedCohort.title}</span>
@@ -89,7 +89,7 @@ export function LiveSessions() {
                     setSelectedCohort(cohort);
                     setIsDropdownOpen(false);
                   }}
-                  className={`w-full text-left px-5 py-3.5 text-sm font-bold transition-colors hover:bg-gray-50 flex items-center gap-3 ${selectedCohort.id === cohort.id ? 'text-orange-primary bg-orange-primary/5' : 'text-gray-600'}`}
+                  className={`w-full text-left px-5 py-3.5 text-sm font-bold transition-colors hover:bg-gray-50 flex items-center gap-3 ${selectedCohort.id === cohort.id ? 'text-retro-salmon bg-retro-salmon/5' : 'text-gray-600'}`}
                 >
                   {cohort.title}
                 </button>
@@ -103,20 +103,20 @@ export function LiveSessions() {
       <div className="flex items-center gap-8 border-b border-gray-100 mb-8 px-1">
         <button
           onClick={() => setActiveTab('live')}
-          className={`pb-4 text-sm font-bold transition-all relative ${activeTab === 'live' ? 'text-orange-primary' : 'text-gray-400 hover:text-gray-600'}`}
+          className={`pb-4 text-sm font-bold transition-all relative ${activeTab === 'live' ? 'text-retro-salmon' : 'text-gray-400 hover:text-gray-600'}`}
         >
           Live Sessions
           {activeTab === 'live' && (
-            <div className="absolute bottom-0 left-0 right-0 h-1 bg-orange-primary rounded-t-full animate-in fade-in slide-in-from-bottom-1"></div>
+            <div className="absolute bottom-0 left-0 right-0 h-1 bg-retro-salmon rounded-t-full animate-in fade-in slide-in-from-bottom-1"></div>
           )}
         </button>
         <button
           onClick={() => setActiveTab('recordings')}
-          className={`pb-4 text-sm font-bold transition-all relative ${activeTab === 'recordings' ? 'text-orange-primary' : 'text-gray-400 hover:text-gray-600'}`}
+          className={`pb-4 text-sm font-bold transition-all relative ${activeTab === 'recordings' ? 'text-retro-salmon' : 'text-gray-400 hover:text-gray-600'}`}
         >
           Live Session Recordings
           {activeTab === 'recordings' && (
-            <div className="absolute bottom-0 left-0 right-0 h-1 bg-orange-primary rounded-t-full animate-in fade-in slide-in-from-bottom-1"></div>
+            <div className="absolute bottom-0 left-0 right-0 h-1 bg-retro-salmon rounded-t-full animate-in fade-in slide-in-from-bottom-1"></div>
           )}
         </button>
       </div>
@@ -125,33 +125,33 @@ export function LiveSessions() {
       {activeTab === 'live' && (
         <section className="animate-in fade-in slide-in-from-left-4 duration-500">
           <div className="flex items-center gap-2 mb-6 px-1">
-            <div className="w-2 h-6 bg-orange-primary rounded-full"></div>
-            <h2 className="text-lg font-bold text-dark-text tracking-tight">Upcoming Live Sessions</h2>
+            <div className="w-2 h-6 bg-retro-salmon rounded-full"></div>
+            <h2 className="text-lg font-bold text-retro-teal tracking-tight">Upcoming Live Sessions</h2>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {DUMMY_LIVE_SESSIONS.map((session) => (
               <div key={session.id} className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm hover:shadow-xl transition-all group overflow-hidden relative">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-orange-primary/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-150 duration-700"></div>
+                <div className="absolute top-0 right-0 w-32 h-32 bg-retro-salmon/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-150 duration-700"></div>
                 
                 <div className="relative z-10">
                   <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-2 px-3 py-1 bg-orange-primary/10 text-orange-primary rounded-full text-[0.65rem] font-extrabold uppercase tracking-wider">
-                      <span className="w-1.5 h-1.5 bg-orange-primary rounded-full animate-pulse"></span>
+                    <div className="flex items-center gap-2 px-3 py-1 bg-retro-salmon/10 text-retro-salmon rounded-full text-[0.65rem] font-extrabold uppercase tracking-wider">
+                      <span className="w-1.5 h-1.5 bg-retro-salmon rounded-full animate-pulse"></span>
                       {session.status}
                     </div>
                     <div className="text-gray-400 text-[0.7rem] font-bold">Mentor: {session.mentor}</div>
                   </div>
 
-                  <h3 className="text-lg font-extrabold text-dark-text mb-4 leading-tight group-hover:text-orange-primary transition-colors">{session.title}</h3>
+                  <h3 className="text-lg font-extrabold text-retro-teal mb-4 leading-tight group-hover:text-retro-salmon transition-colors">{session.title}</h3>
 
                   <div className="flex flex-col gap-3 mb-6">
                     <div className="flex items-center gap-3 text-gray-500">
-                      <Calendar size={16} className="text-orange-primary" />
+                      <Calendar size={16} className="text-retro-salmon" />
                       <span className="text-sm font-bold">{session.date}</span>
                     </div>
                     <div className="flex items-center gap-3 text-gray-500">
-                      <Clock size={16} className="text-orange-primary" />
+                      <Clock size={16} className="text-retro-salmon" />
                       <span className="text-sm font-bold">{session.time}</span>
                     </div>
                   </div>
@@ -160,7 +160,7 @@ export function LiveSessions() {
                     href={session.link} 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="w-full bg-orange-primary text-white font-extrabold py-3.5 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-orange-primary/20 hover:bg-orange-700 hover:shadow-orange-primary/30 transition-all transform hover:-translate-y-1 active:scale-95"
+                    className="w-full bg-retro-salmon text-white font-extrabold py-3.5 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-retro-salmon/20 hover:bg-orange-700 hover:shadow-retro-salmon/30 transition-all transform hover:-translate-y-1 active:scale-95"
                   >
                     Join Session <ExternalLink size={16} />
                   </a>
@@ -177,14 +177,14 @@ export function LiveSessions() {
           <div className="flex items-center justify-between mb-6 px-1">
             <div className="flex items-center gap-2">
               <div className="w-2 h-6 bg-dark-text rounded-full"></div>
-              <h2 className="text-lg font-bold text-dark-text tracking-tight">Past Session Recordings</h2>
+              <h2 className="text-lg font-bold text-retro-teal tracking-tight">Past Session Recordings</h2>
             </div>
             <div className="relative hidden md:block">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
               <input 
                 type="text" 
                 placeholder="Search recordings..."
-                className="bg-white border border-gray-100 pl-10 pr-4 py-2 rounded-xl text-xs font-bold outline-none focus:border-orange-primary shadow-sm transition-all"
+                className="bg-white border border-gray-100 pl-10 pr-4 py-2 rounded-xl text-xs font-bold outline-none focus:border-retro-salmon shadow-sm transition-all"
               />
             </div>
           </div>
@@ -199,7 +199,7 @@ export function LiveSessions() {
                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                   />
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <div className="w-14 h-14 rounded-full bg-orange-primary text-white flex items-center justify-center shadow-2xl transform scale-50 group-hover:scale-100 transition-transform duration-300">
+                    <div className="w-14 h-14 rounded-full bg-retro-salmon text-white flex items-center justify-center shadow-2xl transform scale-50 group-hover:scale-100 transition-transform duration-300">
                       <Play size={24} fill="currentColor" />
                     </div>
                   </div>
@@ -209,7 +209,7 @@ export function LiveSessions() {
                 </div>
 
                 <div className="p-5">
-                  <h3 className="font-extrabold text-dark-text text-[0.95rem] mb-2 leading-snug line-clamp-2 group-hover:text-orange-primary transition-colors">
+                  <h3 className="font-extrabold text-retro-teal text-[0.95rem] mb-2 leading-snug line-clamp-2 group-hover:text-retro-salmon transition-colors">
                     {recording.title}
                   </h3>
                   <div className="flex items-center gap-2 text-gray-400 text-[0.7rem] font-bold">

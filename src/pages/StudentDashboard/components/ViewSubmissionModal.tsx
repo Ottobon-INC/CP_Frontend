@@ -69,7 +69,7 @@ export function ViewSubmissionModal({ assignment, onClose }: ViewSubmissionModal
              {assignment.pointsAwarded !== null && (
                <div className="text-right">
                  <p className="text-[0.65rem] font-black text-gray-400 uppercase tracking-widest mb-1">Points Earned</p>
-                 <p className="text-lg font-black text-orange-primary">{assignment.pointsAwarded} XP</p>
+                 <p className="text-lg font-black text-retro-salmon">{assignment.pointsAwarded} XP</p>
                </div>
              )}
           </div>
@@ -78,7 +78,7 @@ export function ViewSubmissionModal({ assignment, onClose }: ViewSubmissionModal
           {submission?.text && (
             <div className="mb-8">
               <label className="flex items-center gap-2 text-[0.65rem] font-black text-gray-400 uppercase tracking-widest mb-3">
-                <FileText size={14} className="text-orange-primary" />
+                <FileText size={14} className="text-retro-salmon" />
                 Submitted Content
               </label>
               <div className="bg-gray-50 rounded-2xl p-5 border border-gray-100">
@@ -93,25 +93,25 @@ export function ViewSubmissionModal({ assignment, onClose }: ViewSubmissionModal
           {submission?.file && (
             <div className="mb-8">
               <label className="flex items-center gap-2 text-[0.65rem] font-black text-gray-400 uppercase tracking-widest mb-3">
-                <ExternalLink size={14} className="text-orange-primary" />
+                <ExternalLink size={14} className="text-retro-salmon" />
                 Attached Document
               </label>
               <a 
                 href={`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api${submission.file.fileUrl}`} 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="flex items-center justify-between bg-white border-2 border-gray-100 p-4 rounded-2xl hover:border-orange-primary/30 hover:bg-orange-primary/[0.02] transition-all group"
+                className="flex items-center justify-between bg-white border-2 border-gray-100 p-4 rounded-2xl hover:border-retro-salmon/30 hover:bg-retro-salmon/[0.02] transition-all group"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-orange-primary/10 rounded-xl flex items-center justify-center text-orange-primary">
+                  <div className="w-10 h-10 bg-retro-salmon/10 rounded-xl flex items-center justify-center text-retro-salmon">
                     <FileText size={20} />
                   </div>
                   <div>
-                    <p className="text-sm font-black text-gray-900 group-hover:text-orange-primary transition-colors">{submission.file.fileName}</p>
+                    <p className="text-sm font-black text-gray-900 group-hover:text-retro-salmon transition-colors">{submission.file.fileName}</p>
                     <p className="text-[0.6rem] text-gray-400 font-bold uppercase tracking-wider">Click to view in SharePoint</p>
                   </div>
                 </div>
-                <ExternalLink size={18} className="text-gray-300 group-hover:text-orange-primary transition-colors" />
+                <ExternalLink size={18} className="text-gray-300 group-hover:text-retro-salmon transition-colors" />
               </a>
             </div>
           )}

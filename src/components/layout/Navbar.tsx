@@ -82,7 +82,7 @@ const Navbar: React.FC<NavbarProps> = ({
 
     return (
         <motion.nav
-            className={`fixed top-0 left-0 right-0 z-[100] ${isDashboard ? 'bg-[#FFFDD0] border-b border-retro-sage/20 shadow-md' : 'bg-retro-bg/95 backdrop-blur-md shadow-sm'} py-2 md:py-3 transition-all duration-300`}
+            className={`fixed top-0 left-0 right-0 z-[100] bg-retro-bg/95 backdrop-blur-md shadow-sm py-2 md:py-3 transition-all duration-300 border-b border-retro-sage/20`}
             initial={{ y: 0 }}
             animate={{ y: 0 }}
         >

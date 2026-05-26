@@ -79,11 +79,11 @@ export function SubmissionModal({ assignment, onClose }: SubmissionModalProps) {
         {/* Header */}
         <div className="bg-gray-50 px-6 py-6 flex items-center justify-between border-b border-gray-100">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-orange-primary/10 rounded-2xl flex items-center justify-center">
-              <Send className="w-6 h-6 text-orange-primary" />
+            <div className="w-12 h-12 bg-retro-salmon/10 rounded-2xl flex items-center justify-center">
+              <Send className="w-6 h-6 text-retro-salmon" />
             </div>
             <div>
-              <p className="text-[0.6rem] font-black text-orange-primary uppercase tracking-widest mb-0.5">Submit Work</p>
+              <p className="text-[0.6rem] font-black text-retro-salmon uppercase tracking-widest mb-0.5">Submit Work</p>
               <h3 className="text-lg font-black text-gray-900 leading-tight">{assignment.title}</h3>
             </div>
           </div>
@@ -97,7 +97,7 @@ export function SubmissionModal({ assignment, onClose }: SubmissionModalProps) {
           {/* Text/Link Input */}
           <div className="mb-6">
             <label className="flex items-center gap-2 text-xs font-black text-gray-400 uppercase tracking-widest mb-3">
-              <LinkIcon size={14} className="text-orange-primary" />
+              <LinkIcon size={14} className="text-retro-salmon" />
               Links or Notes
             </label>
             <div className="relative group">
@@ -105,7 +105,7 @@ export function SubmissionModal({ assignment, onClose }: SubmissionModalProps) {
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 placeholder="Paste your GitHub repository link, website URL, or type your answer here..."
-                className="w-full h-32 bg-gray-50 border-2 border-transparent focus:border-orange-primary/20 focus:bg-white rounded-2xl p-4 text-sm font-medium outline-none transition-all resize-none group-hover:bg-gray-100/50"
+                className="w-full h-32 bg-gray-50 border-2 border-transparent focus:border-retro-salmon/20 focus:bg-white rounded-2xl p-4 text-sm font-medium outline-none transition-all resize-none group-hover:bg-gray-100/50"
               />
             </div>
           </div>
@@ -113,7 +113,7 @@ export function SubmissionModal({ assignment, onClose }: SubmissionModalProps) {
           {/* File Upload Section */}
           <div className="mb-8">
             <label className="flex items-center gap-2 text-xs font-black text-gray-400 uppercase tracking-widest mb-3">
-              <Upload size={14} className="text-orange-primary" />
+              <Upload size={14} className="text-retro-salmon" />
               Attach File
             </label>
             
@@ -141,13 +141,13 @@ export function SubmissionModal({ assignment, onClose }: SubmissionModalProps) {
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading}
-                className="w-full py-8 border-2 border-dashed border-gray-200 rounded-2xl flex flex-col items-center justify-center gap-3 hover:border-orange-primary/30 hover:bg-orange-primary/[0.02] transition-all group"
+                className="w-full py-8 border-2 border-dashed border-gray-200 rounded-2xl flex flex-col items-center justify-center gap-3 hover:border-retro-salmon/30 hover:bg-retro-salmon/[0.02] transition-all group"
               >
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${uploading ? 'bg-orange-primary/10' : 'bg-gray-50 group-hover:bg-orange-primary/10'}`}>
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${uploading ? 'bg-retro-salmon/10' : 'bg-gray-50 group-hover:bg-retro-salmon/10'}`}>
                   {uploading ? (
-                    <div className="w-6 h-6 border-3 border-orange-primary/30 border-t-orange-primary rounded-full animate-spin" />
+                    <div className="w-6 h-6 border-3 border-retro-salmon/30 border-t-retro-salmon rounded-full animate-spin" />
                   ) : (
-                    <Paperclip size={24} className="text-gray-400 group-hover:text-orange-primary" />
+                    <Paperclip size={24} className="text-gray-400 group-hover:text-retro-salmon" />
                   )}
                 </div>
                 <div className="text-center">
@@ -177,7 +177,7 @@ export function SubmissionModal({ assignment, onClose }: SubmissionModalProps) {
             <button
               type="submit"
               disabled={submitMutation.isPending || uploading || (!content.trim() && !fileData)}
-              className="flex-[2] bg-orange-primary text-white py-4 px-6 rounded-2xl text-sm font-black shadow-xl shadow-orange-primary/20 hover:brightness-110 hover:-translate-y-0.5 disabled:opacity-50 disabled:translate-y-0 disabled:shadow-none transition-all flex items-center justify-center gap-2"
+              className="flex-[2] bg-retro-salmon text-white py-4 px-6 rounded-2xl text-sm font-black shadow-xl shadow-retro-salmon/20 hover:brightness-110 hover:-translate-y-0.5 disabled:opacity-50 disabled:translate-y-0 disabled:shadow-none transition-all flex items-center justify-center gap-2"
             >
               {submitMutation.isPending ? (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />

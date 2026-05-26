@@ -147,11 +147,11 @@ export function MyCourses() {
       {activeFilter !== 'Cohorts' && (
         <>
           <div className="mb-6 relative w-full sm:max-w-sm">
-            <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-text"></i>
+            <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-retro-teal/60"></i>
             <input
               type="text"
               placeholder="Search courses..."
-              className="w-full bg-white border border-border-soft rounded-full py-2.5 pl-10 pr-4 text-sm font-medium focus:outline-none focus:border-orange-primary shadow-sm"
+              className="w-full bg-white border border-retro-sage/20 rounded-full py-2.5 pl-10 pr-4 text-sm font-medium focus:outline-none focus:border-retro-salmon shadow-sm"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -159,9 +159,9 @@ export function MyCourses() {
 
           <div className="flex flex-col sm:flex-row justify-between items-start mb-6 gap-2">
             <div>
-              <p className="text-sm text-gray-text mt-1 font-medium">Manage and continue your learning</p>
+              <p className="text-sm text-retro-teal/60 mt-1 font-medium">Manage and continue your learning</p>
             </div>
-            <div className="bg-gray-200 text-dark-text py-1 px-4 rounded-full text-xs md:text-sm font-bold">
+            <div className="bg-gray-200 text-retro-teal py-1 px-4 rounded-full text-xs md:text-sm font-bold">
               {mappedCourses.length} Active Courses
             </div>
           </div>
@@ -175,7 +175,7 @@ export function MyCourses() {
             <button
               key={f}
               onClick={() => setActiveFilter(f)}
-              className={`py-2 px-4 rounded-full text-xs font-semibold transition-colors border ${activeFilter === f ? 'bg-dark-text text-white border-dark-text' : 'bg-white text-gray-text border-border-soft hover:bg-gray-50'}`}
+              className={`py-2 px-4 rounded-full text-xs font-semibold transition-colors border ${activeFilter === f ? 'bg-dark-text text-white border-dark-text' : 'bg-white text-retro-teal/60 border-border-soft hover:bg-gray-50'}`}
             >
               {f}
             </button>
@@ -192,20 +192,20 @@ export function MyCourses() {
             </div>
           ) : (
             <>
-              <h3 className="text-xl font-bold mb-5">Continue Learning</h3>
+              <h3 className="text-lg font-bold text-retro-teal mb-5">Continue Learning</h3>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-12">
                 {activeCourses.map((course: any, idx) => (
-                  <div key={idx} className="bg-white rounded-2xl p-5 shadow-sm border border-border-soft flex flex-col">
-                    <p className="text-xs text-orange-primary font-bold mb-2">
+                  <div key={idx} className="bg-white rounded-2xl p-5 shadow-sm border border-retro-sage/20 flex flex-col">
+                    <p className="text-xs text-retro-salmon font-bold mb-2">
                       {course.tag}
                     </p>
                     <h4 className="text-lg font-bold mb-4">{course.title}</h4>
                     <div className="h-[120px] rounded-lg bg-cover bg-center mb-4 bg-gray-100 flex items-center justify-center">
                       <i className={`fas ${course.tag.toLowerCase().includes('on-demand') ? 'fa-play-circle' : 'fa-users'} text-gray-300 text-4xl`}></i>
                     </div>
-                    <div className="h-[8px] bg-gray-200 rounded-full w-full mb-2"><div className="h-full bg-[#10B981] rounded-full" style={{ width: `${course.progress}%` }}></div></div>
+                    <div className="h-[8px] bg-gray-200 rounded-full w-full mb-2"><div className="h-full bg-retro-cyan rounded-full" style={{ width: `${course.progress}%` }}></div></div>
                     <div className="flex justify-between text-xs font-bold mb-2"><span>Completion %</span><span>{course.progress}%</span></div>
-                    <p className="text-orange-primary text-xs font-bold">
+                    <p className="text-retro-salmon text-xs font-bold">
                       In Progress
                     </p>
                     <button 
@@ -213,7 +213,7 @@ export function MyCourses() {
                         const target = resolveCourseTarget(course);
                         if (target) setLocation(target);
                       }}
-                      className="w-full mt-4 bg-orange-primary text-white py-2 rounded-lg font-bold hover:shadow-md transition-all shadow-sm"
+                      className="w-full mt-4 bg-retro-salmon text-white py-2 rounded-lg font-bold hover:shadow-md transition-all shadow-sm"
                     >
                       Resume Learning
                     </button>
@@ -221,26 +221,26 @@ export function MyCourses() {
                 ))}
                 {activeCourses.length === 0 && !isLoading && (
                   <div className="col-span-2 py-8 px-4 text-center bg-white rounded-2xl border border-dashed border-border-soft">
-                    <p className="text-gray-text font-medium text-sm">No active courses found in this category.</p>
+                    <p className="text-retro-teal/60 font-medium text-sm">No active courses found in this category.</p>
                   </div>
                 )}
               </div>
 
-              <h3 className="text-xl font-bold mb-5">Completed Courses</h3>
+              <h3 className="text-lg font-bold text-retro-teal mb-5">Completed Courses</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {completedCourses.map(course => (
-                  <div key={course.id} className="bg-white rounded-2xl p-5 shadow-sm border border-border-soft flex flex-col min-h-[250px] justify-between transition-transform hover:-translate-y-1">
+                  <div key={course.id} className="bg-white rounded-2xl p-5 shadow-sm border border-retro-sage/20 flex flex-col min-h-[250px] justify-between transition-transform hover:-translate-y-1">
                     <div>
                       <div className="flex justify-between mb-4">
-                        <div className="w-10 h-10 rounded-lg border border-border-soft bg-center bg-contain bg-no-repeat" style={{ backgroundImage: `url('${course.icon}')` }}></div>
-                        <i className="fas fa-ellipsis-v text-gray-text cursor-pointer hover:text-dark-text p-2"></i>
+                        <div className="w-10 h-10 rounded-lg border border-retro-sage/20 bg-center bg-contain bg-no-repeat" style={{ backgroundImage: `url('${course.icon}')` }}></div>
+                        <i className="fas fa-ellipsis-v text-retro-teal/60 cursor-pointer hover:text-retro-teal p-2"></i>
                       </div>
                       <h4 className="font-bold text-[1.05rem] mb-2 leading-tight">{course.title}</h4>
-                      <p className="text-[0.8rem] text-gray-text leading-relaxed font-medium mb-4">{course.desc}</p>
+                      <p className="text-[0.8rem] text-retro-teal/60 leading-relaxed font-medium mb-4">{course.desc}</p>
                     </div>
                     <div>
-                      <div className="h-[6px] bg-[#10B981] rounded-full w-full mb-3"></div>
-                      <p className="text-[0.7rem] text-gray-text mb-3">Completed</p>
+                      <div className="h-[6px] bg-retro-cyan rounded-full w-full mb-3"></div>
+                      <p className="text-[0.7rem] text-retro-teal/60 mb-3">Completed</p>
                       <div className="flex justify-between items-center">
                         <span className={`text-[0.75rem] font-bold px-2 py-1 rounded bg-gray-100 text-gray-700`}>{course.tag}</span>
                         <button 
@@ -248,7 +248,7 @@ export function MyCourses() {
                             const target = resolveCourseTarget(course);
                             if (target) setLocation(target);
                           }}
-                          className={`bg-orange-primary text-white border-none py-1.5 px-4 text-xs font-bold rounded hover:opacity-90`}
+                          className={`bg-retro-salmon text-white border-none py-1.5 px-4 text-xs font-bold rounded hover:opacity-90`}
                         >
                           View
                         </button>
@@ -258,7 +258,7 @@ export function MyCourses() {
                 ))}
                 {completedCourses.length === 0 && !isLoading && (
                   <div className="col-span-full py-12 text-center bg-white rounded-2xl border border-dashed border-border-soft">
-                    <p className="text-gray-text font-medium">You haven't completed any courses in this category yet.</p>
+                    <p className="text-retro-teal/60 font-medium">You haven't completed any courses in this category yet.</p>
                   </div>
                 )}
               </div>
@@ -267,13 +267,13 @@ export function MyCourses() {
         </div>
 
         <aside>
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-border-soft mb-6">
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-retro-sage/20 mb-6">
             <h3 className="text-lg font-bold mb-6">Learning Summary</h3>
-            <div className="flex justify-between mb-4"><span className="text-gray-text text-sm font-medium">Enrolled courses</span><span className="text-2xl font-bold font-sans">{mappedCourses.length}</span></div>
-            <div className="flex justify-between mb-4"><span className="text-gray-text text-sm font-medium">Completed courses</span><span className="text-2xl font-bold font-sans">{mappedCourses.filter(c => c.progress === 100).length}</span></div>
+            <div className="flex justify-between mb-4"><span className="text-retro-teal/60 text-sm font-medium">Enrolled courses</span><span className="text-2xl font-bold font-sans">{mappedCourses.length}</span></div>
+            <div className="flex justify-between mb-4"><span className="text-retro-teal/60 text-sm font-medium">Completed courses</span><span className="text-2xl font-bold font-sans">{mappedCourses.filter(c => c.progress === 100).length}</span></div>
             <div className="flex justify-between items-end mt-4 mb-2">
-              <p className="text-sm text-gray-text font-semibold">Average progress</p>
-              <p className="text-sm font-bold text-dark-text">
+              <p className="text-sm text-retro-teal/60 font-semibold">Average progress</p>
+              <p className="text-sm font-bold text-retro-teal">
                 {mappedCourses.length > 0 
                   ? Math.round(mappedCourses.reduce((acc, c) => acc + (c.progress || 0), 0) / mappedCourses.length) 
                   : 0}%
@@ -289,7 +289,7 @@ export function MyCourses() {
                 return (
                   <div 
                     key={i} 
-                    className={`flex-1 rounded-t-sm transition-all duration-1000 ease-out ${isActive ? 'bg-[#1B3535]' : 'bg-gray-100'}`}
+                    className={`flex-1 rounded-t-sm transition-all duration-1000 ease-out ${isActive ? 'bg-retro-teal' : 'bg-gray-100'}`}
                     style={{ height: `${Math.max(progress, 5)}%` }}
                   ></div>
                 );
@@ -298,7 +298,7 @@ export function MyCourses() {
           </div>
 
           {summary?.catalog && summary.catalog.length > 0 && (
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-border-soft">
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-retro-sage/20">
               <h3 className="text-lg font-bold mb-5">Recommended Next Course</h3>
               <div className="flex gap-4 mb-4">
                 <img 
@@ -308,12 +308,12 @@ export function MyCourses() {
                 />
                 <div className="flex flex-col justify-center">
                   <h4 className="font-bold text-md leading-tight mb-2">{summary.catalog[0].title}</h4>
-                  <span className="text-[0.65rem] font-bold bg-orange-soft text-orange-primary px-2 py-1 rounded w-fit">
+                  <span className="text-[0.65rem] font-bold bg-retro-bg text-retro-salmon px-2 py-1 rounded w-fit">
                     {summary.catalog[0].category || 'General'}
                   </span>
                 </div>
               </div>
-              <p className="text-sm text-gray-text mb-6 font-medium leading-relaxed">
+              <p className="text-sm text-retro-teal/60 mb-6 font-medium leading-relaxed">
                 Enroll now to start your journey in {summary.catalog[0].title}.
               </p>
               <button 

@@ -87,7 +87,7 @@ export function Assignments() {
     return (
       <div className="flex items-center justify-center h-[60vh]">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-orange-primary/30 border-t-orange-primary rounded-full animate-spin" />
+          <div className="w-12 h-12 border-4 border-retro-salmon/30 border-t-retro-salmon rounded-full animate-spin" />
           <p className="text-gray-400 font-black text-xs uppercase tracking-widest">Loading Assignments...</p>
         </div>
       </div>
@@ -105,7 +105,7 @@ export function Assignments() {
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4 mb-6 md:mb-8 px-1">
         {[
           { label: 'Total', value: stats.total, icon: 'fa-layer-group', color: 'text-gray-400' },
-          { label: 'Pending', value: stats.pending, icon: 'fa-clock', color: 'text-orange-primary' },
+          { label: 'Pending', value: stats.pending, icon: 'fa-clock', color: 'text-retro-salmon' },
           { label: 'Submitted', value: stats.submitted, icon: 'fa-paper-plane', color: 'text-blue-500' },
           { label: 'In Review', value: stats.review, icon: 'fa-search', color: 'text-purple-500' },
           { label: 'Approved', value: stats.approved, icon: 'fa-check-circle', color: 'text-green-500' },
@@ -117,7 +117,7 @@ export function Assignments() {
             </div>
             <div className="min-w-0">
               <p className="text-[0.55rem] md:text-[0.6rem] font-black text-gray-400 uppercase tracking-widest truncate">{stat.label}</p>
-              <h3 className="text-base md:text-lg font-black text-dark-text">{stat.value}</h3>
+              <h3 className="text-base md:text-lg font-black text-retro-teal">{stat.value}</h3>
             </div>
           </div>
         ))}
@@ -132,12 +132,12 @@ export function Assignments() {
                 key={tab}
                 onClick={() => setActiveTab(tab)}
                 className={`py-4 px-4 md:px-6 text-xs md:text-sm font-black transition-all relative whitespace-nowrap flex-shrink-0 ${
-                  activeTab === tab ? 'text-orange-primary' : 'text-gray-400 hover:text-gray-600'
+                  activeTab === tab ? 'text-retro-salmon' : 'text-gray-400 hover:text-gray-600'
                 }`}
               >
                 {tab === 'Review' ? 'In Review' : tab}
                 {activeTab === tab && (
-                  <div className="absolute bottom-0 left-0 w-full h-[3px] bg-orange-primary rounded-t-full shadow-[0_-2px_8px_rgba(232,83,31,0.4)]"></div>
+                  <div className="absolute bottom-0 left-0 w-full h-[3px] bg-retro-salmon rounded-t-full shadow-[0_-2px_8px_rgba(232,83,31,0.4)]"></div>
                 )}
               </button>
             ))}
@@ -150,7 +150,7 @@ export function Assignments() {
                 <select 
                   value={programType}
                   onChange={(e) => setProgramType(e.target.value as any)}
-                  className="w-full bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-[0.7rem] font-black text-dark-text outline-none appearance-none pr-8 cursor-pointer shadow-sm hover:border-orange-primary/30 transition-all min-w-[130px]"
+                  className="w-full bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-[0.7rem] font-black text-retro-teal outline-none appearance-none pr-8 cursor-pointer shadow-sm hover:border-retro-salmon/30 transition-all min-w-[130px]"
                 >
                   <option value="cohort">Cohorts</option>
                   <option value="ondemand">On-Demand</option>
@@ -166,7 +166,7 @@ export function Assignments() {
                 <select 
                   value={selectedCourse}
                   onChange={(e) => setSelectedCourse(e.target.value)}
-                  className="w-full bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-[0.7rem] font-black text-dark-text outline-none appearance-none pr-8 cursor-pointer shadow-sm hover:border-orange-primary/30 transition-all min-w-[160px]"
+                  className="w-full bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-[0.7rem] font-black text-retro-teal outline-none appearance-none pr-8 cursor-pointer shadow-sm hover:border-retro-salmon/30 transition-all min-w-[160px]"
                 >
                   {availableCourses.map(course => (
                     <option key={course.courseId} value={course.courseId}>{course.courseName}</option>
@@ -182,8 +182,8 @@ export function Assignments() {
         <div className="p-3 md:p-6">
           <div className="grid grid-cols-1 gap-3 md:gap-4">
             {filteredAssignments.map(assignment => (
-              <div key={assignment.assignmentId} className="group bg-white border border-gray-100 rounded-xl md:rounded-2xl p-4 md:p-5 flex flex-col md:flex-row items-center gap-4 md:gap-6 hover:border-orange-primary/20 hover:shadow-lg hover:shadow-orange-primary/5 transition-all">
-                <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-2xl bg-gray-50 flex items-center justify-center text-xl md:text-2xl text-gray-400 group-hover:bg-orange-primary/10 group-hover:text-orange-primary transition-colors flex-shrink-0 border border-gray-100">
+              <div key={assignment.assignmentId} className="group bg-white border border-gray-100 rounded-xl md:rounded-2xl p-4 md:p-5 flex flex-col md:flex-row items-center gap-4 md:gap-6 hover:border-retro-salmon/20 hover:shadow-lg hover:shadow-retro-salmon/5 transition-all">
+                <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-2xl bg-gray-50 flex items-center justify-center text-xl md:text-2xl text-gray-400 group-hover:bg-retro-salmon/10 group-hover:text-retro-salmon transition-colors flex-shrink-0 border border-gray-100">
                   <i className={`fas fa-tasks`}></i>
                 </div>
 
@@ -193,7 +193,7 @@ export function Assignments() {
                     {assignment.moduleNo > 0 && ` • Module ${assignment.moduleNo}`}
                     {assignment.programType === 'workshop' && ` • Workshop Task`}
                   </p>
-                  <h4 className="text-[0.95rem] md:text-[1.05rem] font-black text-gray-900 group-hover:text-orange-primary transition-colors truncate">{assignment.title}</h4>
+                  <h4 className="text-[0.95rem] md:text-[1.05rem] font-black text-gray-900 group-hover:text-retro-salmon transition-colors truncate">{assignment.title}</h4>
                   <div className="flex items-center justify-center md:justify-start gap-3 md:gap-4 mt-2">
                     <span className="flex items-center gap-1.5 text-[0.7rem] text-gray-500 font-bold">
                       <i className="far fa-calendar-alt text-gray-300"></i> Due: {formatDate(assignment.dueDate)}
@@ -213,7 +213,7 @@ export function Assignments() {
                   {assignment.status === 'pending' || assignment.status === 'rejected' ? (
                     <button 
                       onClick={() => setSubmittingAssignment(assignment)}
-                      className="w-full sm:w-auto bg-orange-primary text-white px-6 py-2.5 rounded-xl text-[0.7rem] font-black shadow-lg shadow-orange-primary/20 hover:brightness-110 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 whitespace-nowrap"
+                      className="w-full sm:w-auto bg-retro-salmon text-white px-6 py-2.5 rounded-xl text-[0.7rem] font-black shadow-lg shadow-retro-salmon/20 hover:brightness-110 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 whitespace-nowrap"
                     >
                       {assignment.status === 'rejected' ? 'Resubmit Work' : 'Submit Now'} <i className="fas fa-arrow-right text-[0.6rem]"></i>
                     </button>

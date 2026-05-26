@@ -43,7 +43,7 @@ export function CohortsView({ hideSidebar = false }: { hideSidebar?: boolean }) 
     return (
       <div className={`${!hideSidebar ? 'animate-fade-in relative z-0 pb-16' : ''} flex items-center justify-center min-h-[400px]`}>
         <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 border-4 border-dark-teal border-t-transparent rounded-full animate-spin" />
+          <div className="w-10 h-10 border-4 border-retro-teal border-t-transparent rounded-full animate-spin" />
           <p className="text-sm text-gray-400 font-medium">Loading your cohorts…</p>
         </div>
       </div>
@@ -86,13 +86,13 @@ export function CohortsView({ hideSidebar = false }: { hideSidebar?: boolean }) 
         {allCourses.length > 0 && (
           <div className="flex flex-col gap-1.5 min-w-[240px]">
             <label className="text-[0.65rem] font-bold text-gray-400 uppercase tracking-widest ml-1 flex items-center gap-2">
-              <i className="fas fa-filter text-dark-teal" /> Switch Cohort Course
+              <i className="fas fa-filter text-retro-teal" /> Switch Cohort Course
             </label>
             <div className="relative">
               <select 
                 value={selectedCourse || ''} 
                 onChange={(e) => handleCourseChange(e.target.value)}
-                className="w-full bg-white border border-border-soft rounded-xl px-4 py-2.5 text-sm font-bold text-dark-text shadow-sm focus:outline-none focus:ring-2 focus:ring-dark-teal/20 appearance-none cursor-pointer"
+                className="w-full bg-white border border-retro-sage/20 rounded-xl px-4 py-2.5 text-sm font-bold text-retro-teal shadow-sm focus:outline-none focus:ring-2 focus:ring-retro-teal/20 appearance-none cursor-pointer"
               >
                 {allCourses.map(c => (
                   <option key={c.id} value={c.name}>{c.name}</option>
@@ -107,7 +107,7 @@ export function CohortsView({ hideSidebar = false }: { hideSidebar?: boolean }) 
       </div>
 
       {hasNoCohorts ? (
-        <div className="bg-white rounded-xl shadow-sm p-12 border border-border-soft text-center">
+        <div className="bg-white rounded-xl shadow-sm p-12 border border-retro-sage/20 text-center">
           <i className="fas fa-users text-gray-300 text-5xl mb-4" />
           <h3 className="text-lg font-bold text-gray-500 mb-2">No Cohorts Yet</h3>
           <p className="text-sm text-gray-400 font-medium">
@@ -124,8 +124,8 @@ export function CohortsView({ hideSidebar = false }: { hideSidebar?: boolean }) 
             {/* Active Cohorts */}
             {filteredActive.length > 0 && (
               <section>
-                <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                  <i className="fas fa-users text-dark-teal" /> Active Cohort{filteredActive.length > 1 ? 's' : ''}
+                <h2 className="text-lg font-bold text-retro-teal mb-4 flex items-center gap-2">
+                  <i className="fas fa-users text-retro-teal" /> Active Cohort{filteredActive.length > 1 ? 's' : ''}
                 </h2>
                 {filteredActive.map((cohort) => (
                   <ActiveCohortCard key={cohort.cohortId} cohort={cohort} />
@@ -135,8 +135,8 @@ export function CohortsView({ hideSidebar = false }: { hideSidebar?: boolean }) 
 
             {/* Previous Cohorts — always visible */}
             <section>
-              <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                <i className="fas fa-history text-dark-teal" /> Previous Cohort{filteredCompleted.length !== 1 ? 's' : ''}
+              <h2 className="text-lg font-bold text-retro-teal mb-4 flex items-center gap-2">
+                <i className="fas fa-history text-retro-teal" /> Previous Cohort{filteredCompleted.length !== 1 ? 's' : ''}
               </h2>
               {filteredCompleted.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -145,7 +145,7 @@ export function CohortsView({ hideSidebar = false }: { hideSidebar?: boolean }) 
                   ))}
                 </div>
               ) : (
-                <div className="bg-white rounded-xl shadow-sm p-8 border border-border-soft text-center">
+                <div className="bg-white rounded-xl shadow-sm p-8 border border-retro-sage/20 text-center">
                   <i className="fas fa-folder-open text-gray-200 text-3xl mb-3" />
                   <p className="text-sm text-gray-400 font-medium">No previous cohorts for this course</p>
                 </div>
@@ -216,13 +216,13 @@ export function CohortTopPerformer({ courseId }: { courseId?: string }) {
 
   if (courseId && !isLoading && isLocked) {
     return (
-      <section className="bg-white rounded-2xl shadow-sm p-8 border border-border-soft overflow-hidden relative group">
+      <section className="bg-white rounded-2xl shadow-sm p-8 border border-retro-sage/20 overflow-hidden relative group">
         <div className="flex flex-col md:flex-row items-center gap-8">
           <div className="w-20 h-20 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-200 text-4xl">
             <i className="fas fa-lock" />
           </div>
           <div className="flex-1 text-center md:text-left">
-            <h3 className="text-lg font-bold text-dark-text mb-2 flex items-center justify-center md:justify-start gap-2">
+            <h3 className="text-lg font-bold text-retro-teal mb-2 flex items-center justify-center md:justify-start gap-2">
               Leaderboard Locked
             </h3>
             <p className="text-sm text-gray-400 font-medium max-w-md">
@@ -235,18 +235,18 @@ export function CohortTopPerformer({ courseId }: { courseId?: string }) {
   }
 
   return (
-    <section className="bg-gradient-to-br from-white via-white to-orange-soft/20 rounded-2xl shadow-sm p-6 border border-border-soft overflow-hidden group hover:border-orange-primary/30 transition-all relative">
+    <section className="bg-gradient-to-br from-white via-white to-retro-bg/20 rounded-2xl shadow-sm p-6 border border-retro-sage/20 overflow-hidden group hover:border-retro-salmon/30 transition-all relative">
       <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
-        <i className="fas fa-trophy text-8xl text-orange-primary" />
+        <i className="fas fa-trophy text-8xl text-retro-salmon" />
       </div>
 
       <div className="flex flex-col md:flex-row items-center gap-8 relative z-10">
         {/* Left: Branding & Title */}
         <div className="flex-1 text-center md:text-left">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-orange-primary/10 text-orange-primary text-[0.6rem] font-black uppercase tracking-widest rounded-full mb-3">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-retro-salmon/10 text-retro-salmon text-[0.6rem] font-black uppercase tracking-widest rounded-full mb-3">
             <i className="fas fa-bolt" /> Cohort Highlight
           </div>
-          <h3 className="text-xl font-black text-dark-text mb-2">
+          <h3 className="text-xl font-black text-retro-teal mb-2">
             Top Performer
           </h3>
           <p className="text-sm text-gray-400 font-medium max-w-xs">
@@ -270,8 +270,8 @@ export function CohortTopPerformer({ courseId }: { courseId?: string }) {
                {topPerformer.avatar ? (
                   <img src={topPerformer.avatar} className="w-16 h-16 rounded-full border-4 border-white object-cover shadow-lg" alt="Top Performer" />
                ) : (
-                  <div className="w-16 h-16 rounded-full bg-orange-soft flex items-center justify-center border-4 border-white shadow-md">
-                     <i className="fas fa-user text-orange-primary text-2xl" />
+                  <div className="w-16 h-16 rounded-full bg-retro-bg flex items-center justify-center border-4 border-white shadow-md">
+                     <i className="fas fa-user text-retro-salmon text-2xl" />
                   </div>
                )}
                <div className="absolute -bottom-2 -right-2 bg-yellow-400 text-white w-7 h-7 rounded-full flex items-center justify-center border-2 border-white shadow-sm scale-90">
@@ -280,9 +280,9 @@ export function CohortTopPerformer({ courseId }: { courseId?: string }) {
             </div>
             
             <div className="text-center md:text-left">
-              <h4 className="font-black text-dark-text text-lg leading-tight mb-0.5">{topPerformer.name}</h4>
+              <h4 className="font-black text-retro-teal text-lg leading-tight mb-0.5">{topPerformer.name}</h4>
               <div className="flex items-center justify-center md:justify-start gap-3">
-                <p className="text-xs font-black text-orange-primary uppercase tracking-widest">{(topPerformer.score || 0).toLocaleString()} Points</p>
+                <p className="text-xs font-black text-retro-salmon uppercase tracking-widest">{(topPerformer.score || 0).toLocaleString()} Points</p>
                 <span className="w-1 h-1 bg-gray-300 rounded-full" />
                 <span className="text-[0.65rem] font-bold text-gray-400 uppercase tracking-widest">
                    {courseId ? `Cohort Rank #${topPerformer.rank}` : `Global Rank #${topPerformer.rank}`}
@@ -319,11 +319,11 @@ function ActiveCohortCard({ cohort }: { cohort: ActiveCohort }) {
   const extraMembers = Math.max(0, cohort.memberCount - 5);
 
   return (
-    <div className="bg-white rounded-xl shadow-sm p-6 w-full border border-border-soft mb-4">
+    <div className="bg-white rounded-xl shadow-sm p-6 w-full border border-retro-sage/20 mb-4">
       {/* Header row */}
       <div className="flex justify-between items-start mb-4">
         <div>
-          <h3 className="text-[1.1rem] font-bold text-dark-text mb-1.5 flex items-center gap-2">
+          <h3 className="text-[1.1rem] font-bold text-retro-teal mb-1.5 flex items-center gap-2">
             <span className={`w-2 h-2 rounded-full shadow-sm ${cohort.status === 'Ongoing' ? 'bg-green-500' : 'bg-yellow-400'}`} />
             {cohort.courseName}
           </h3>
@@ -346,7 +346,7 @@ function ActiveCohortCard({ cohort }: { cohort: ActiveCohort }) {
           {cohort.memberPreview.map((name, i) => (
             <div
               key={i}
-              className="w-[34px] h-[34px] rounded-full border-2 border-white shadow-sm bg-dark-teal flex items-center justify-center text-white text-[0.6rem] font-bold transition-transform group-hover:translate-x-1"
+              className="w-[34px] h-[34px] rounded-full border-2 border-white shadow-sm bg-retro-teal flex items-center justify-center text-white text-[0.6rem] font-bold transition-transform group-hover:translate-x-1"
               title={name}
             >
               {getInitials(name)}
@@ -363,13 +363,13 @@ function ActiveCohortCard({ cohort }: { cohort: ActiveCohort }) {
       {/* Project & Discussion */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 my-8">
         {/* Project card */}
-        <div className="bg-gray-50/50 p-5 rounded-2xl border border-border-soft relative">
+        <div className="bg-gray-50/50 p-5 rounded-2xl border border-retro-sage/20 relative">
           <div className="flex justify-between items-center mb-4">
             <h4 className="text-sm font-bold text-gray-700 flex items-center gap-2">
-              <i className="fas fa-project-diagram text-orange-primary/80" /> Current Project
+              <i className="fas fa-project-diagram text-retro-salmon/80" /> Current Project
             </h4>
             {projectPhase && (
-              <span className="text-[0.65rem] font-bold px-2 py-0.5 rounded bg-orange-soft text-orange-primary uppercase border border-orange-primary/20">
+              <span className="text-[0.65rem] font-bold px-2 py-0.5 rounded bg-retro-bg text-retro-salmon uppercase border border-retro-salmon/20">
                 {projectPhase}
               </span>
             )}
@@ -389,12 +389,12 @@ function ActiveCohortCard({ cohort }: { cohort: ActiveCohort }) {
                     </div>
                   )}
                   <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
-                    <div className="h-full bg-dark-teal rounded-full" style={{ width: `${projectProgress}%` }} />
+                    <div className="h-full bg-retro-teal rounded-full" style={{ width: `${projectProgress}%` }} />
                   </div>
                 </div>
                 <button
                   onClick={() => setShowProjectModal(true)}
-                  className="text-[0.7rem] font-bold text-orange-primary bg-white border border-orange-primary/30 px-3 py-1.5 rounded-lg hover:bg-orange-primary hover:text-white transition-all shadow-sm"
+                  className="text-[0.7rem] font-bold text-retro-salmon bg-white border border-retro-salmon/30 px-3 py-1.5 rounded-lg hover:bg-retro-salmon hover:text-white transition-all shadow-sm"
                 >
                   Details
                 </button>
@@ -423,7 +423,7 @@ function ActiveCohortCard({ cohort }: { cohort: ActiveCohort }) {
           </div>
           <button
             onClick={() => setLocation('/messages?tab=team')}
-            className="w-full bg-dark-teal text-white text-sm font-bold py-2.5 rounded-xl hover:brightness-110 transition-all shadow-md flex items-center justify-center gap-2"
+            className="w-full bg-retro-teal text-white text-sm font-bold py-2.5 rounded-xl hover:brightness-110 transition-all shadow-md flex items-center justify-center gap-2"
           >
             <i className="fas fa-external-link-alt text-xs opacity-70" /> Open Cohort Chat
           </button>
@@ -438,7 +438,7 @@ function ActiveCohortCard({ cohort }: { cohort: ActiveCohort }) {
               setLocation(`/course/${cohort.courseSlug}`);
             }
           }}
-          className="bg-orange-primary text-white text-sm font-bold px-6 py-2.5 rounded-xl hover:shadow-lg transition-all shadow-md"
+          className="bg-retro-salmon text-white text-sm font-bold px-6 py-2.5 rounded-xl hover:shadow-lg transition-all shadow-md"
         >
           Go to Course
         </button>
@@ -448,7 +448,7 @@ function ActiveCohortCard({ cohort }: { cohort: ActiveCohort }) {
               setLocation(`/course/${cohort.courseSlug}`);
             }
           }}
-          className="bg-white border border-border-soft text-dark-text text-sm font-bold px-6 py-2.5 rounded-xl hover:bg-gray-50 transition-all flex items-center gap-2"
+          className="bg-white border border-retro-sage/20 text-retro-teal text-sm font-bold px-6 py-2.5 rounded-xl hover:bg-gray-50 transition-all flex items-center gap-2"
         >
           <i className="fas fa-folder-open text-gray-400" /> Course Materials
         </button>
@@ -462,7 +462,7 @@ function ActiveCohortCard({ cohort }: { cohort: ActiveCohort }) {
         </div>
         <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
           <div
-            className="h-full bg-gradient-to-r from-dark-teal to-emerald-400 rounded-full transition-all duration-500"
+            className="h-full bg-gradient-to-r from-retro-teal to-emerald-400 rounded-full transition-all duration-500"
             style={{ width: `${cohort.progress}%` }}
           />
         </div>
@@ -475,8 +475,8 @@ function ActiveCohortCard({ cohort }: { cohort: ActiveCohort }) {
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             {/* Modal header */}
             <div className="flex justify-between items-center p-6 pb-4 border-b border-border-soft sticky top-0 bg-white rounded-t-2xl z-10">
-              <h3 className="text-lg font-bold text-dark-text flex items-center gap-2">
-                <i className="fas fa-project-diagram text-orange-primary" /> Project Details
+              <h3 className="text-lg font-bold text-retro-teal flex items-center gap-2">
+                <i className="fas fa-project-diagram text-retro-salmon" /> Project Details
               </h3>
               <button
                 onClick={() => setShowProjectModal(false)}
@@ -491,14 +491,14 @@ function ActiveCohortCard({ cohort }: { cohort: ActiveCohort }) {
               {/* Title */}
               <div>
                 <p className="text-[0.65rem] font-bold text-gray-400 uppercase tracking-widest mb-1">Project Name</p>
-                <h4 className="text-[1.1rem] font-bold text-dark-text">{projectTitle}</h4>
+                <h4 className="text-[1.1rem] font-bold text-retro-teal">{projectTitle}</h4>
               </div>
 
               {/* Phase badge */}
               {projectPhase && (
                 <div>
                   <p className="text-[0.65rem] font-bold text-gray-400 uppercase tracking-widest mb-1">Phase</p>
-                  <span className="text-xs font-bold px-3 py-1 rounded-full bg-orange-soft text-orange-primary border border-orange-primary/20">
+                  <span className="text-xs font-bold px-3 py-1 rounded-full bg-retro-bg text-retro-salmon border border-retro-salmon/20">
                     {projectPhase}
                   </span>
                 </div>
@@ -516,12 +516,12 @@ function ActiveCohortCard({ cohort }: { cohort: ActiveCohort }) {
               {milestoneTotal > 0 && (
                 <div>
                   <p className="text-[0.65rem] font-bold text-gray-400 uppercase tracking-widest mb-2">Progress</p>
-                  <div className="flex justify-between text-sm font-bold text-dark-text mb-2">
+                  <div className="flex justify-between text-sm font-bold text-retro-teal mb-2">
                     <span>Milestone {milestoneCompleted} of {milestoneTotal}</span>
                     <span>{projectProgress}%</span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-dark-teal to-emerald-400 rounded-full transition-all" style={{ width: `${projectProgress}%` }} />
+                    <div className="h-full bg-gradient-to-r from-retro-teal to-emerald-400 rounded-full transition-all" style={{ width: `${projectProgress}%` }} />
                   </div>
                 </div>
               )}
@@ -548,7 +548,7 @@ function ActiveCohortCard({ cohort }: { cohort: ActiveCohort }) {
                         ))}
                       </ul>
                     ) : (
-                      <pre className="text-xs text-gray-500 bg-gray-50 p-3 rounded-lg overflow-x-auto border border-border-soft">{JSON.stringify(value, null, 2)}</pre>
+                      <pre className="text-xs text-gray-500 bg-gray-50 p-3 rounded-lg overflow-x-auto border border-retro-sage/20">{JSON.stringify(value, null, 2)}</pre>
                     )}
                   </div>
                 );
@@ -559,7 +559,7 @@ function ActiveCohortCard({ cohort }: { cohort: ActiveCohort }) {
             <div className="p-6 pt-4 border-t border-border-soft sticky bottom-0 bg-white rounded-b-2xl">
               <button
                 onClick={() => setShowProjectModal(false)}
-                className="w-full bg-dark-teal text-white text-sm font-bold py-2.5 rounded-xl hover:brightness-110 transition-all shadow-md"
+                className="w-full bg-retro-teal text-white text-sm font-bold py-2.5 rounded-xl hover:brightness-110 transition-all shadow-md"
               >
                 Close
               </button>
@@ -574,9 +574,9 @@ function ActiveCohortCard({ cohort }: { cohort: ActiveCohort }) {
 /* ─── Completed Cohort Card ─── */
 function CompletedCohortCard({ cohort }: { cohort: CompletedCohort }) {
   return (
-    <div className="bg-white rounded-xl shadow-sm p-5 border border-border-soft flex flex-col justify-between group cursor-pointer hover:border-orange-primary/30 transition-all">
+    <div className="bg-white rounded-xl shadow-sm p-5 border border-retro-sage/20 flex flex-col justify-between group cursor-pointer hover:border-retro-salmon/30 transition-all">
       <div>
-        <h3 className="font-bold text-[1rem] flex items-center gap-2 mb-1 group-hover:text-orange-primary transition-colors">
+        <h3 className="font-bold text-[1rem] flex items-center gap-2 mb-1 group-hover:text-retro-salmon transition-colors">
           {cohort.courseName}
         </h3>
         <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">
@@ -595,12 +595,12 @@ function CompletedCohortCard({ cohort }: { cohort: CompletedCohort }) {
         {cohort.courseSlug ? (
           <a
             href={`/our-courses/${cohort.courseSlug}`}
-            className="text-[0.7rem] font-bold text-dark-text hover:text-orange-primary hover:translate-x-1 transition-all flex items-center gap-1.5"
+            className="text-[0.7rem] font-bold text-retro-teal hover:text-retro-salmon hover:translate-x-1 transition-all flex items-center gap-1.5"
           >
             View Recap <i className="fas fa-arrow-right text-[0.6rem]" />
           </a>
         ) : (
-          <button className="text-[0.7rem] font-bold text-dark-text hover:text-orange-primary hover:translate-x-1 transition-all flex items-center gap-1.5">
+          <button className="text-[0.7rem] font-bold text-retro-teal hover:text-retro-salmon hover:translate-x-1 transition-all flex items-center gap-1.5">
             View Recap <i className="fas fa-arrow-right text-[0.6rem]" />
           </button>
         )}

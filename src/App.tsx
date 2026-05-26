@@ -43,21 +43,8 @@ import { Certificates as DashboardCertificates } from "@/pages/StudentDashboard/
 import { Profile as DashboardProfile } from "@/pages/StudentDashboard/pages/Profile";
 import { LiveSessions as DashboardLiveSessions } from "@/pages/StudentDashboard/pages/LiveSessions";
 import { ThemeProvider } from "@/contexts/ThemeContext";
-import { DRIP_CSS } from "@/pages/StudentDashboard/constants/styles";
 
 function DashboardRoute({ component: Component }: { component: React.ComponentType }) {
-  useEffect(() => {
-    const style = document.createElement('style');
-    style.id = 'student-dashboard-styles';
-    style.textContent = DRIP_CSS;
-    document.head.appendChild(style);
-    return () => {
-      const existingStyle = document.getElementById('student-dashboard-styles');
-      if (existingStyle) {
-        document.head.removeChild(existingStyle);
-      }
-    };
-  }, []);
 
   return (
     <DashboardLayout>
@@ -87,7 +74,9 @@ function Router() {
       {/* Course Routes */}
       <Route path="/course/:id/assessment" component={AssessmentPage} />
       <Route path="/course/:id/enroll" component={EnrollmentPage} />
-      <Route path="/course/:id/learn/:lesson" component={CoursePlayerPage} />
+      <Route path="/course/:id/learn/:lesson">
+        {() => <CoursePlayerPage />}
+      </Route>
       <Route path="/ondemand/:id/learn/:lesson" component={OnDemandPlayerPage} />
       <Route path="/ondemand/:id/congrats/certificate" component={CourseCertificatePage} />
       <Route path="/ondemand/:id/congrats/feedback" component={CongratsFeedbackPage} />
