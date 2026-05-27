@@ -136,9 +136,7 @@ export function Home() {
                   <span className="text-white font-extrabold text-xl leading-none">{topProgress}%</span>
                 </div>
               </div>
-              <span className="text-retro-bg/40 text-[10px] font-bold text-center max-w-[80px] truncate leading-tight">
-                {courses[0].title}
-              </span>
+
             </div>
           )}
         </div>
@@ -312,42 +310,7 @@ export function Home() {
           </div>
         </div>
 
-        {/* ── CATALOG / RECOMMENDED ── lg:col-span-6 */}
-        {catalog.length > 0 && (
-          <div className="sm:col-span-2 lg:col-span-6 rounded-2xl bg-white/90 backdrop-blur-sm border border-retro-sage/20 shadow-[0_2px_16px_rgba(0,0,0,0.04)] p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-bold text-retro-teal flex items-center gap-2">
-                <TrendingUp size={14} className="text-retro-salmon" /> Recommended For You
-              </h2>
-              <button onClick={() => setLocation('/our-courses/cohort')} className="text-[11px] font-bold text-retro-salmon/80 hover:text-retro-salmon flex items-center gap-0.5 transition-colors">
-                Browse <ArrowRight size={11} />
-              </button>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {catalog.slice(0, 4).map((course) => (
-                <div
-                  key={course.id}
-                  onClick={() => setLocation('/our-courses/cohort')}
-                  className="group flex items-start gap-3 p-3.5 rounded-xl border border-retro-sage/15 hover:border-retro-salmon/30 hover:bg-retro-bg/30 transition-all cursor-pointer"
-                >
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-retro-teal/20 to-retro-teal/10 flex items-center justify-center shrink-0">
-                    <BookOpen size={14} className="text-retro-teal/60" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold text-retro-teal truncate group-hover:text-retro-salmon transition-colors leading-snug">{course.title}</p>
-                    <p className="text-[10px] text-retro-teal/40 font-semibold mt-0.5 capitalize">{course.category}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <button
-              onClick={() => setLocation('/our-courses/cohort')}
-              className="mt-4 w-full py-2.5 rounded-xl border border-retro-salmon/20 text-xs font-bold text-retro-salmon hover:bg-retro-salmon hover:text-white transition-all duration-200"
-            >
-              Explore All Courses
-            </button>
-          </div>
-        )}
+        {/* ── CATALOG / RECOMMENDED REMOVED ── */}
 
         {/* ── URGENT ── lg:col-span-6 */}
         <div className={`sm:col-span-2 ${catalog.length > 0 ? 'lg:col-span-6' : 'lg:col-span-12'} rounded-2xl ${urgent.length > 0 ? 'bg-red-50 border border-red-100' : 'bg-emerald-50 border border-emerald-100'

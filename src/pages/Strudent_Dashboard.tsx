@@ -1,4 +1,4 @@
-﻿
+
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'wouter';
 import {
@@ -22,6 +22,7 @@ import { motion } from 'framer-motion';
 import { readStoredSession, ensureSessionFresh, logoutAndRedirect } from '@/utils/session';
 import { fetchDashboardSummary, type DashboardSummary } from '@/lib/dashboardApi';
 import CustomSearchBar from '@/components/dashboard/CustomSearchBar';
+import logoImage from '@/logo.png';
 
 // --- TYPES ---
 export enum EnrollmentType {
@@ -113,11 +114,9 @@ const Sidebar: React.FC<{
         onClick={onHomeClick}
         className="flex items-center gap-3 min-w-max group cursor-pointer"
       >
-        <div className="w-9 h-9 bg-retro-salmon rounded-xl flex-shrink-0 flex items-center justify-center font-bold text-white ring-1 ring-inset ring-slate-900/10 group-hover:scale-110 transition-all">
-          <Zap size={18} fill="white" />
-        </div>
+        <img src={logoImage} alt="Ottobon" className="h-8 w-auto object-contain group-hover:scale-105 transition-all" />
         <div className="flex flex-col">
-          <span className="font-black text-lg tracking-tighter leading-none">OTTOLEARN</span>
+          <span className="font-black text-lg tracking-tighter leading-none">Ottobon</span>
         </div>
       </button>
 
@@ -213,7 +212,7 @@ const MasteredHero: React.FC<{
           <div className="space-y-3">
             <h2 className="text-2xl md:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight leading-tight">
               {isMastered
-                ? `Congratulations, ${userName}! You've Mastered ${courseTitle}! 🔥`
+                ? `Congratulations, ${userName}! You've Mastered ${courseTitle}! ??`
                 : `You're progressing, ${userName}! Keep building ${courseTitle}.`}
             </h2>
             <p className="text-sm md:text-base text-slate-600 max-w-2xl">
@@ -424,7 +423,7 @@ const DashboardContent: React.FC<{
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {hasOnDemand ? (
               data.onDemand.map((course) => {
-                const rating = typeof (course as { rating?: number }).rating === "number" ? (course as { rating: number }).rating : null;
+                const rating = typeof (course as any).rating === "number" ? (course as any).rating : null;
                 return (
                   <div
                     key={course.id}

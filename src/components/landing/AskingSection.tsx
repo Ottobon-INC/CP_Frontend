@@ -211,7 +211,7 @@ const ShiftBlock: React.FC = () => {
             transition={{ duration: 0.7, delay: 0.32, ease: EASE_OUT }}
             className="text-2xl md:text-3xl lg:text-4xl font-bold text-white leading-snug max-w-2xl mx-auto"
           >
-            At Ottolearn, asking questions isn't weakness —{' '}
+            At Ottobon, asking questions isn't weakness —{' '}
             <span className="text-retro-sage">it's a skill.</span>
           </motion.p>
         </div>

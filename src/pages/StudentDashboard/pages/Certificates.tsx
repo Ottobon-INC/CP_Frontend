@@ -244,7 +244,7 @@ export function Certificates() {
               </p>
             </div>
             <p className="text-[0.7rem] font-medium text-gray-400 mt-3.5 leading-relaxed bg-gray-50 p-2 rounded-lg border border-gray-100">
-              {latestCert ? `I'm excited to share that I've completed the ${latestCert.courseTitle} program at Ottolearn!` : "Check out my new certificate from Ottolearn!"}
+              {latestCert ? `I'm excited to share that I've completed the ${latestCert.courseTitle} program at Ottobon!` : "Check out my new certificate from Ottobon!"}
             </p>
           </div>
         </div>

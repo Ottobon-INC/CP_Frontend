@@ -144,6 +144,34 @@ export function MyCourses() {
     };
   }, [searchQuery, activeFilter, mappedCourses]);
 
+  const displayRecommendations = useMemo(() => {
+    if (!summary?.catalog) return [];
+    
+    if (activeFilter === 'Cohorts') {
+      return summary.catalog.filter(c => c.programType === 'cohort').slice(0, 3);
+    }
+    if (activeFilter === 'On-demand') {
+      return summary.catalog.filter(c => c.programType === 'ondemand').slice(0, 3);
+    }
+    if (activeFilter === 'Workshops') {
+      return summary.catalog.filter(c => c.programType === 'workshop').slice(0, 3);
+    }
+    
+    // For 'All', try to show a mix
+    const cohorts = summary.catalog.filter(c => c.programType === 'cohort');
+    const ondemand = summary.catalog.filter(c => c.programType === 'ondemand');
+    const workshops = summary.catalog.filter(c => c.programType === 'workshop');
+    
+    const mix: any[] = [];
+    if (cohorts.length > 0) mix.push(cohorts[0]);
+    if (ondemand.length > 0) mix.push(ondemand[0]);
+    if (workshops.length > 0) mix.push(workshops[0]);
+    
+    // Fill the rest up to 3 if we don't have all types
+    const remaining = summary.catalog.filter(c => !mix.find(m => m.id === c.id));
+    return [...mix, ...remaining].slice(0, 3);
+  }, [summary, activeFilter]);
+
   // Click outside to close dropdown
   useEffect(() => {
     const handleOutsideClick = () => setSortOpen(false);
@@ -307,31 +335,47 @@ export function MyCourses() {
             </div>
           </div>
 
-          {summary?.catalog && summary.catalog.length > 0 && (
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-retro-sage/20">
-              <h3 className="text-lg font-bold mb-5">Recommended Next Course</h3>
-              <div className="flex gap-4 mb-4">
-                <img 
-                  src={summary.catalog[0].thumbnailUrl || recommendedImage} 
-                  alt={summary.catalog[0].title} 
-                  className="w-[80px] h-[80px] rounded-lg object-cover shadow-sm" 
-                />
-                <div className="flex flex-col justify-center">
-                  <h4 className="font-bold text-md leading-tight mb-2">{summary.catalog[0].title}</h4>
-                  <span className="text-[0.65rem] font-bold bg-retro-bg text-retro-salmon px-2 py-1 rounded w-fit">
-                    {summary.catalog[0].category || 'General'}
-                  </span>
+          {displayRecommendations.length > 0 && (
+            <div className="relative overflow-hidden bg-gradient-to-br from-[#1e293b] to-[#0f172a] rounded-2xl p-6 shadow-lg border border-slate-700/50 group hover:shadow-xl hover:shadow-[#E84E36]/10 transition-all duration-300">
+              {/* Background accent */}
+              <div className="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 bg-[#E84E36]/20 rounded-full blur-2xl group-hover:bg-[#E84E36]/30 transition-all duration-500"></div>
+              
+              <div className="flex items-center gap-2 mb-6 relative z-10">
+                <div className="w-8 h-8 rounded-full bg-[#E84E36]/20 flex items-center justify-center">
+                  <i className="fas fa-star text-[#E84E36] text-sm"></i>
                 </div>
+                <h3 className="text-base font-bold text-white tracking-wide">Recommended For You</h3>
               </div>
-              <p className="text-sm text-retro-teal/60 mb-6 font-medium leading-relaxed">
-                Enroll now to start your journey in {summary.catalog[0].title}.
-              </p>
-              <button 
-                onClick={() => setLocation(`/course/${summary.catalog[0].courseSlug}`)}
-                className="w-full bg-[#E84E36] text-white font-bold py-3 rounded-xl hover:brightness-110 transition-all shadow-md active:scale-95"
-              >
-                Join Course
-              </button>
+              
+              <div className="space-y-4 relative z-10">
+                {displayRecommendations.map((course, idx) => (
+                  <div key={idx} className="group/item flex flex-col gap-3 pb-4 border-b border-slate-700/50 last:border-0 last:pb-0">
+                    <div className="flex flex-col min-w-0">
+                      <div className="flex items-center gap-1.5 mb-2 flex-wrap">
+                        <span className={`text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-sm ${
+                          course.programType === 'cohort' ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30' : 
+                          course.programType === 'ondemand' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 
+                          'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                        }`}>
+                          {course.programType === 'ondemand' ? 'On-Demand' : course.programType}
+                        </span>
+                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider truncate">
+                          {course.category || 'General'}
+                        </span>
+                      </div>
+                      <h4 className="font-bold text-white text-sm leading-snug line-clamp-2">{course.title}</h4>
+                    </div>
+                    
+                    <button 
+                      onClick={() => setLocation(course.programType === 'ondemand' ? `/ondemand/${course.courseSlug || course.courseId}` : `/course/${course.courseSlug || course.courseId}`)}
+                      className="w-full bg-slate-800/50 border border-slate-600/50 text-slate-200 font-bold py-2 rounded-lg hover:bg-[#E84E36] hover:text-white hover:border-[#E84E36] transition-all duration-300 shadow-sm flex items-center justify-center gap-2 text-sm mt-1"
+                    >
+                      <span>View Details</span>
+                      <i className="fas fa-arrow-right text-xs group-hover/item:translate-x-1 transition-transform"></i>
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </aside>
