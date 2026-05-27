@@ -192,12 +192,16 @@ export default function MessagingModule() {
   const lastSocketErrorRef = useRef<string | null>(null);
   useEffect(() => {
     if (!socketError) return;
-    if (lastSocketErrorRef.current === socketError) return;
-    lastSocketErrorRef.current = socketError;
+    if (socketError.level !== "blocking") {
+      clearSocketError();
+      return;
+    }
+    if (lastSocketErrorRef.current === socketError.message) return;
+    lastSocketErrorRef.current = socketError.message;
     toast({
       variant: "destructive",
       title: "Messaging issue",
-      description: socketError,
+      description: socketError.message,
     });
     clearSocketError();
   }, [socketError, toast, clearSocketError]);

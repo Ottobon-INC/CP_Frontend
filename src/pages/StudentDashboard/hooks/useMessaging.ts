@@ -17,6 +17,13 @@ type SendMessageResult = {
   error?: string;
 };
 
+type SocketErrorLevel = "non_blocking" | "blocking";
+
+type SocketErrorState = {
+  message: string;
+  level: SocketErrorLevel;
+};
+
 function extractMemberId(member: any): string | null {
   if (!member || typeof member !== "object") return null;
   const raw =
@@ -45,7 +52,7 @@ export function useMessaging(selectedConversation: Conversation | null) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [unseenCounts, setUnseenCounts] = useState<Record<string, number>>({});
   const [typingUsers, setTypingUsers] = useState<Record<string, boolean>>({});
-  const [socketError, setSocketError] = useState<string | null>(null);
+  const [socketError, setSocketError] = useState<SocketErrorState | null>(null);
   const socketRef = useRef<Socket | null>(null);
   const processedIncomingMessageIdsRef = useRef<Set<string>>(new Set());
   const conversationsRef = useRef<Conversation[]>([]);
@@ -218,7 +225,7 @@ export function useMessaging(selectedConversation: Conversation | null) {
 
     socket.on("connect_error", (error) => {
       const message = error instanceof Error ? error.message : "Messaging socket connection failed";
-      setSocketError(message);
+      setSocketError({ message, level: "non_blocking" });
       console.error("Messaging socket connect_error:", message);
 
       const lower = message.toLowerCase();
@@ -233,7 +240,7 @@ export function useMessaging(selectedConversation: Conversation | null) {
 
     socket.on("disconnect", (reason) => {
       if (reason !== "io client disconnect") {
-        setSocketError(`Messaging disconnected: ${reason}`);
+        setSocketError({ message: `Messaging disconnected: ${reason}`, level: "non_blocking" });
       }
     });
 
@@ -356,7 +363,7 @@ export function useMessaging(selectedConversation: Conversation | null) {
 
     socket.on("error", (payload: { message?: string } | undefined) => {
       const message = payload?.message || "Failed to send message";
-      setSocketError(message);
+      setSocketError({ message, level: "blocking" });
     });
 
     return () => {
@@ -514,12 +521,12 @@ export function useMessaging(selectedConversation: Conversation | null) {
         if (socketResult.ok) {
           return socketResult;
         }
-        setSocketError(socketResult.error || "Socket send failed");
+        setSocketError({ message: socketResult.error || "Socket send failed", level: "blocking" });
       }
 
       const fallbackResult = await sendMessageViaHttp(content, options);
       if (!fallbackResult.ok) {
-        setSocketError(fallbackResult.error || "Message send failed");
+        setSocketError({ message: fallbackResult.error || "Message send failed", level: "blocking" });
       }
       return fallbackResult;
     },
