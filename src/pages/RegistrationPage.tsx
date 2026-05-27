@@ -11,7 +11,7 @@ import { StudentData, Answer } from '@/types/registration'
 import { fetchOfferings, generatePaymentCode } from '@/lib/registrationApi'
 import PaymentStep from '@/components/registration/PaymentStep'
 
-const STORAGE_KEY = 'ottolearn_reg_draft'
+const STORAGE_KEY = 'Ottobon_reg_draft'
 
 const toRouteSlug = (value: string): string =>
     value
@@ -307,7 +307,7 @@ function RegistrationPage() {
                 {/* Header */}
                 <div className="text-center mb-8">
                     <h1 className="text-4xl md:text-5xl font-bold text-black mb-3">
-                        OttoLearn
+                        Ottobon
                     </h1>
                 </div>
 
@@ -370,7 +370,7 @@ function RegistrationPage() {
 
                 {/* Footer */}
                 <div className="text-center mt-16 text-sm text-gray-500">
-                    <p>(c) 2026 OttoLearn. All rights reserved.</p>
+                    <p>(c) 2026 Ottobon. All rights reserved.</p>
                 </div>
             </div>
         </div>

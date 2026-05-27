@@ -27,8 +27,8 @@ function useBlogSEO(blog: Blog | null) {
     const BASE_URL = 'https://learn.ottobon.in';
     const blogSlug = blog.slug || blog.id;
     const canonicalUrl = `${BASE_URL}/blogs/${blogSlug}`;
-    const title = `${blog.title} | Ottolearn`;
-    const description = blog.summary || blog.description || 'Read this insightful article on Ottolearn — AI-powered education platform.';
+    const title = `${blog.title} | Ottobon`;
+    const description = blog.summary || blog.description || 'Read this insightful article on Ottobon — AI-powered education platform.';
     const image = blog.image_url || `${BASE_URL}/og-default.png`;
 
     // ── Helper to set/create a <meta> tag ────────────────────────────────
@@ -71,7 +71,7 @@ function useBlogSEO(blog: Blog | null) {
     setMeta('meta[property="og:description"]', description);
     setMeta('meta[property="og:url"]', canonicalUrl);
     setMeta('meta[property="og:image"]', image);
-    setMeta('meta[property="og:site_name"]', 'Ottolearn');
+    setMeta('meta[property="og:site_name"]', 'Ottobon');
     setMeta('meta[property="og:locale"]', 'en_IN');
 
     // 5. Twitter Card
@@ -79,7 +79,7 @@ function useBlogSEO(blog: Blog | null) {
     setMeta('meta[name="twitter:title"]', title);
     setMeta('meta[name="twitter:description"]', description);
     setMeta('meta[name="twitter:image"]', image);
-    setMeta('meta[name="twitter:site"]', '@Ottolearn');
+    setMeta('meta[name="twitter:site"]', '@Ottobon');
 
     // 6. Article-specific structured data for Google (JSON-LD)
     const existingJsonLd = document.querySelector('#blog-jsonld');
@@ -98,7 +98,7 @@ function useBlogSEO(blog: Blog | null) {
       datePublished: blog.created_at || new Date().toISOString(),
       publisher: {
         '@type': 'Organization',
-        name: 'Ottolearn',
+        name: 'Ottobon',
         url: BASE_URL,
         logo: {
           '@type': 'ImageObject',
@@ -111,7 +111,7 @@ function useBlogSEO(blog: Blog | null) {
 
     // Cleanup on unmount — reset to generic site defaults
     return () => {
-      document.title = 'Ottolearn — AI-Native Learning Platform';
+      document.title = 'Ottobon — AI-Native Learning Platform';
       const jsonLdEl = document.querySelector('#blog-jsonld');
       if (jsonLdEl) jsonLdEl.remove();
     };
@@ -207,7 +207,7 @@ const BlogDetailPage: React.FC = () => {
               onClick={() => {
                 const TWITTER_LIMIT = 280;
                 const URL_CHARS = 24;
-                const SUFFIX = '\n\nRead on Ottolearn 👇 ';
+                const SUFFIX = '\n\nRead on Ottobon 👇 ';
                 const budget = TWITTER_LIMIT - URL_CHARS - SUFFIX.length;
 
                 const titleText = blog.title || '';
@@ -246,7 +246,7 @@ const BlogDetailPage: React.FC = () => {
               title="Share on Facebook"
               onClick={() => {
                 const url = encodeURIComponent(window.location.href);
-                const quote = encodeURIComponent(`${blog.title} — Read on Ottolearn`);
+                const quote = encodeURIComponent(`${blog.title} — Read on Ottobon`);
                 window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}&quote=${quote}`, '_blank');
               }}
               className="hover:text-[#1877F2] transition-all hover:scale-110 cursor-pointer"
@@ -258,7 +258,7 @@ const BlogDetailPage: React.FC = () => {
             <button
               title="Share on LinkedIn"
               onClick={() => {
-                const postText = `📖 ${blog.title}\n\n${blog.summary || blog.description || ''}\n\nRead the full article 👉 ${window.location.href}\n\n#Ottolearn #Learning #Education`;
+                const postText = `📖 ${blog.title}\n\n${blog.summary || blog.description || ''}\n\nRead the full article 👉 ${window.location.href}\n\n#Ottobon #Learning #Education`;
                 const encodedText = encodeURIComponent(postText);
                 window.open(
                   `https://www.linkedin.com/feed/?shareActive=true&text=${encodedText}`,
@@ -274,7 +274,7 @@ const BlogDetailPage: React.FC = () => {
             <button
               title="Copy link for Instagram"
               onClick={() => {
-                const text = `${blog.title}\n\nRead on Ottolearn 👉 ${window.location.href}`;
+                const text = `${blog.title}\n\nRead on Ottobon 👉 ${window.location.href}`;
                 navigator.clipboard.writeText(text).then(() => {
                   setCopied(true);
                   setTimeout(() => setCopied(false), 2500);

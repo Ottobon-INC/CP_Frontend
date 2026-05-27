@@ -66,10 +66,10 @@ const CertificateFrame = ({
           <div className="flex items-start justify-between gap-5">
             <div className="flex items-center gap-3 sm:gap-4">
               <div className="flex h-14 w-14 items-center justify-center rounded-full border border-[#d8b87a] bg-[#fff6e8] shadow-[0_6px_18px_rgba(0,0,0,0.12)] sm:h-16 sm:w-16">
-                <img src={logoImage} alt="OttoLearn" className="h-8 w-8 object-contain sm:h-10 sm:w-10" />
+                <img src={logoImage} alt="Ottobon" className="h-8 w-8 object-contain sm:h-10 sm:w-10" />
               </div>
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-[#874F41] sm:text-xs">OttoLearn</p>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-[#874F41] sm:text-xs">Ottobon</p>
                 <p className="text-[10px] font-medium text-[#5f6a68] sm:text-xs">Career Accelerator Platform</p>
               </div>
             </div>
@@ -115,7 +115,7 @@ const CertificateFrame = ({
                 className="mt-1 text-lg font-medium text-[#26343a] sm:text-2xl"
                 style={{ fontFamily: "'Cormorant Garamond', 'Times New Roman', 'Georgia', serif" }}
               >
-                OttoLearn Board
+                Ottobon Board
               </p>
             </div>
           </div>

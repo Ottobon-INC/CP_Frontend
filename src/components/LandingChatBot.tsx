@@ -124,8 +124,8 @@ export default function LandingChatBot({ userName }: LandingChatBotProps) {
     // Initialize or update greeting when userName changes
     useEffect(() => {
         const greeting = userName
-            ? `Hi ${userName}! I'm the Ottolearn guide. I can help explain our Cohorts, Workshops, and On-Demand courses. What are you looking for today?`
-            : "Hi! I'm the Ottolearn guide. I can help explain our Cohorts, Workshops, and On-Demand courses. What are you looking for today?";
+            ? `Hi ${userName}! I'm the Ottobon guide. I can help explain our Cohorts, Workshops, and On-Demand courses. What are you looking for today?`
+            : "Hi! I'm the Ottobon guide. I can help explain our Cohorts, Workshops, and On-Demand courses. What are you looking for today?";
 
         setMessages((prev) => {
             // If empty, add intro
@@ -447,7 +447,7 @@ export default function LandingChatBot({ userName }: LandingChatBotProps) {
                                 <Bot className="h-6 w-6" />
                             </div>
                             <div>
-                                <CardTitle className="text-lg">Ottolearn Guide</CardTitle>
+                                <CardTitle className="text-lg">Ottobon Guide</CardTitle>
                                 <p className="text-xs text-white/80">
                                     {userName ? `Hi, ${userName}` : 'Ask about our programs'}
                                 </p>

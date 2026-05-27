@@ -1,4 +1,5 @@
 import React from 'react';
+import logoImage from '@/logo.png';
 
 const Footer: React.FC = () => {
     return (
@@ -6,13 +7,13 @@ const Footer: React.FC = () => {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-8">
                 {/* Logo Section */}
                 <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 bg-[#E64833] transform rotate-45 rounded-sm" />
-                    <span className="text-xl font-bold tracking-tight text-white">Ottolearn</span>
+                    <img src={logoImage} alt="Ottobon" className="h-8 w-auto object-contain" />
+                    <span className="text-xl font-bold tracking-tight text-white">Ottobon</span>
                 </div>
 
                 {/* Copyright */}
                 <div className="text-sm text-slate-300/80">
-                    © 2026 Ottolearn. All rights reserved.
+                    © 2026 Ottobon. All rights reserved.
                 </div>
 
                 {/* Links */}

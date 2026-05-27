@@ -11,6 +11,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import logoImage from '@/logo.png';
 
 interface UserProfile {
     fullName?: string;
@@ -88,11 +89,9 @@ const Navbar: React.FC<NavbarProps> = ({
         >
             <div className="w-full px-4 md:px-12 flex justify-between items-center">
                 <div className="flex items-center gap-2 md:gap-3 cursor-pointer" onClick={() => setLocation('/')}>
-                    <div className="w-7 h-7 md:w-9 md:h-9 bg-retro-sage rounded-lg transform rotate-45 shadow-lg shadow-retro-sage/50 shrink-0 flex items-center justify-center">
-                        <span className="-rotate-45 text-white font-bold text-[10px] md:text-xs">OL</span>
-                    </div>
+                    <img src={logoImage} alt="Ottobon Logo" className="h-10 md:h-12 w-auto object-contain shrink-0" />
                     <div className="flex flex-col">
-                        <span className="font-bold text-lg md:text-2xl text-retro-teal tracking-tighter leading-none">Ottolearn</span>
+                        <span className="font-bold text-lg md:text-2xl text-retro-teal tracking-tighter leading-none">Ottobon</span>
                         <span className="text-[8px] md:text-[10px] text-retro-salmon font-bold uppercase tracking-wider mt-0.5 max-w-[150px] md:max-w-none">
                             Inspired by Harvard Method of Teaching
                         </span>
