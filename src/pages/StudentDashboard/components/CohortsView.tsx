@@ -435,7 +435,7 @@ function ActiveCohortCard({ cohort }: { cohort: ActiveCohort }) {
         <button
           onClick={() => {
             if (cohort.courseSlug) {
-              setLocation(`/course/${cohort.courseSlug}`);
+              setLocation(`/course/${cohort.courseSlug}/learn/start`);
             }
           }}
           className="bg-retro-salmon text-white text-sm font-bold px-6 py-2.5 rounded-xl hover:shadow-lg transition-all shadow-md"
@@ -445,7 +445,7 @@ function ActiveCohortCard({ cohort }: { cohort: ActiveCohort }) {
         <button
           onClick={() => {
             if (cohort.courseSlug) {
-              setLocation(`/course/${cohort.courseSlug}`);
+              setLocation(`/course/${cohort.courseSlug}/learn/start`);
             }
           }}
           className="bg-white border border-retro-sage/20 text-retro-teal text-sm font-bold px-6 py-2.5 rounded-xl hover:bg-gray-50 transition-all flex items-center gap-2"

@@ -32,6 +32,16 @@ export function MyCourses() {
     if (!course.courseSlug) {
       return null;
     }
+    // Enrolled learners should jump directly into the player.
+    if (course.isEnrolled) {
+      const safeLesson = (course.lastLessonSlug ?? '').trim() || 'start';
+      if (course.programType === 'ondemand') {
+        return `/ondemand/${course.courseSlug}/learn/${safeLesson}`;
+      }
+      if (course.programType === 'cohort') {
+        return `/course/${course.courseSlug}/learn/${safeLesson}`;
+      }
+    }
     if (course.programType === 'ondemand') {
       return `/ondemand/${course.courseSlug}`;
     }

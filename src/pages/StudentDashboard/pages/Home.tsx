@@ -47,8 +47,12 @@ export function Home() {
   const catalog = summary?.catalog || [];
   const rank = lb?.rank;
 
-  const goto = (courseSlug: string | null | undefined, lastSlug?: string | null) =>
-    courseSlug ? setLocation(`/course/${courseSlug}`) : undefined;
+  const goto = (courseSlug: string | null | undefined, lastSlug?: string | null, isOnDemand = false) => {
+    if (!courseSlug) return;
+    const safeLesson = (lastSlug ?? "").trim() || "start";
+    const base = isOnDemand ? "/ondemand" : "/course";
+    setLocation(`${base}/${courseSlug}/learn/${safeLesson}`);
+  };
 
   /* ─────────── loading skeleton ─────────── */
   if (isLoading) return (
@@ -198,7 +202,13 @@ export function Home() {
                 return (
                   <div
                     key={c.id}
-                    onClick={() => goto(c.courseSlug, 'lastLessonSlug' in c ? (c as any).lastLessonSlug : null)}
+                    onClick={() =>
+                      goto(
+                        c.courseSlug,
+                        'lastLessonSlug' in c ? (c as any).lastLessonSlug : null,
+                        !('status' in c),
+                      )
+                    }
                     className="flex items-center gap-4 px-6 py-4 hover:bg-retro-bg/20 transition-colors cursor-pointer group"
                   >
                     {/* index circle */}
@@ -227,7 +237,14 @@ export function Home() {
                       </div>
                     </div>
                     <button
-                      onClick={(e) => { e.stopPropagation(); goto(c.courseSlug, 'lastLessonSlug' in c ? (c as any).lastLessonSlug : null); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        goto(
+                          c.courseSlug,
+                          'lastLessonSlug' in c ? (c as any).lastLessonSlug : null,
+                          !('status' in c),
+                        );
+                      }}
                       className="shrink-0 w-8 h-8 rounded-xl bg-retro-teal/5 text-retro-teal/50 flex items-center justify-center group-hover:bg-retro-salmon group-hover:text-white transition-all duration-200"
                     >
                       <Play size={13} />
