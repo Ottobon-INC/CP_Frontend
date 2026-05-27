@@ -605,6 +605,188 @@ const CourseDetailsPage = (props: any) => {
     );
   }
 
+  // --- Cohort CTA State Machine ---
+  type CohortCtaState =
+    | { kind: "loading" }
+    | { kind: "not_cohort" } // non-cohort: use existing logic
+    | { kind: "already_applied" }
+    | { kind: "approved_member" }
+    | { kind: "approved_member_upcoming"; date: string; days: number }
+    | { kind: "coming_soon" }
+    | { kind: "registration_upcoming"; date: string }
+    | { kind: "register_now" };
+
+  const computeCtaState = (): CohortCtaState => {
+    if (!accessStatus) return { kind: "loading" };
+    if (programType !== "cohort") return { kind: "not_cohort" };
+
+    const now = new Date();
+
+    if (accessStatus.isApprovedMember) {
+      if (accessStatus.cohortStartsAt) {
+        const startsAt = new Date(accessStatus.cohortStartsAt);
+        if (startsAt > now) {
+          const diffTime = Math.abs(startsAt.getTime() - now.getTime());
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          const dateStr = startsAt.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+          return { kind: "approved_member_upcoming", date: dateStr, days: diffDays };
+        }
+      }
+      return { kind: "approved_member" };
+    }
+    
+    if (accessStatus.hasApplied) return { kind: "already_applied" };
+    if (!cohorts || cohorts.length === 0) return { kind: "coming_soon" };
+
+    const openForRegistration: any[] = [];
+    const upcomingRegistration: any[] = [];
+
+    for (const c of cohorts) {
+      const regStart = c.registrationStartsAt ? new Date(c.registrationStartsAt) : null;
+      const regEnd = c.registrationEndsAt ? new Date(c.registrationEndsAt) : null;
+
+      if (!regStart && !regEnd) {
+        openForRegistration.push(c);
+        continue;
+      }
+
+      const started = !regStart || regStart <= now;
+      const notEnded = !regEnd || regEnd >= now;
+
+      if (started && notEnded) {
+        openForRegistration.push(c);
+      } else if (regStart && regStart > now) {
+        upcomingRegistration.push(c);
+      }
+    }
+
+    if (openForRegistration.length > 0) return { kind: "register_now" };
+
+    if (upcomingRegistration.length > 0) {
+      upcomingRegistration.sort((a, b) => new Date(a.registrationStartsAt).getTime() - new Date(b.registrationStartsAt).getTime());
+      const dt = new Date(upcomingRegistration[0].registrationStartsAt);
+      return { kind: "registration_upcoming", date: dt.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) };
+    }
+
+    return { kind: "coming_soon" };
+  };
+
+  const ctaState = computeCtaState();
+
+  const renderCtaButton = (location: "header" | "footer") => {
+    const baseClass = location === "header" 
+      ? "bg-[#bf2f1f] hover:bg-[#a62619] text-white px-6 py-3 rounded-lg font-semibold shadow-lg transition active:scale-95"
+      : "bg-[#bf2f1f] hover:bg-[#a62619] text-white px-6 py-3 font-semibold transition active:scale-95 border border-[#bf2f1f]";
+      
+    const disabledClass = location === "header"
+      ? "bg-[#4a4845] text-white px-6 py-3 rounded-lg font-semibold shadow-inner cursor-not-allowed opacity-90"
+      : "bg-[#4a4845] text-white px-6 py-3 font-semibold shadow-inner cursor-not-allowed opacity-90";
+
+    const disabledUpcomingClass = location === "header"
+      ? "bg-gradient-to-r from-[#4a4845] to-[#5a5754] text-white/90 px-6 py-3 rounded-lg font-semibold shadow-inner cursor-not-allowed border border-white/10"
+      : "bg-[#4a4845] text-white/90 px-6 py-3 font-semibold shadow-inner cursor-not-allowed opacity-90";
+
+    const playClass = location === "header"
+      ? "bg-[#0f766e] hover:bg-[#0d645d] text-white px-6 py-3 rounded-lg font-semibold shadow-lg transition active:scale-95 flex items-center gap-2"
+      : "bg-[#0f766e] hover:bg-[#0d645d] text-white px-6 py-3 font-semibold transition active:scale-95 border border-[#0f766e] flex items-center gap-2";
+
+    if (ctaState.kind === "loading") {
+      return <div className={`h-12 w-32 bg-white/10 animate-pulse ${location === "header" ? "rounded-lg" : ""}`}></div>;
+    }
+
+    if (ctaState.kind === "not_cohort") {
+      return !accessStatus ? (
+        <div className={`h-12 w-32 bg-white/10 animate-pulse ${location === "header" ? "rounded-lg" : ""}`}></div>
+      ) : !accessStatus.isAuthenticated ? (
+        <button
+          className={baseClass}
+          onClick={() => {
+            const target = `/course/${courseId}?login_intent=register`;
+            sessionStorage.setItem("postLoginRedirect", target);
+            window.location.href = `${buildApiUrl("/auth/google")}?redirect=${encodeURIComponent(target)}`;
+          }}
+        >
+          Register Now
+        </button>
+      ) : !accessStatus.hasApplied ? (
+        <button
+          className={baseClass}
+          onClick={() => setLocation(`/registration/${programType}/${courseId}`)}
+        >
+          Register Now
+        </button>
+      ) : !accessStatus.isApprovedMember ? (
+        <button disabled className={disabledClass}>Registration pending</button>
+      ) : (
+        <button className={playClass} onClick={handleEnrollStart} disabled={enrolling}>
+          {location === "header" && <PlayCircle className="w-5 h-5" />} {enrolling ? "Validating..." : "Start Learning"}
+        </button>
+      );
+    }
+
+    if (ctaState.kind === "approved_member") {
+      return (
+        <button className={playClass} onClick={handleEnrollStart} disabled={enrolling}>
+          {location === "header" && <PlayCircle className="w-5 h-5" />} {enrolling ? "Validating..." : "Start Learning"}
+        </button>
+      );
+    }
+
+    if (ctaState.kind === "approved_member_upcoming") {
+      return (
+        <button disabled className={disabledUpcomingClass}>
+          <span className="flex items-center gap-2">
+            <Clock className="w-4 h-4" /> Starts on {ctaState.date} ({ctaState.days} days)
+          </span>
+        </button>
+      );
+    }
+
+    if (ctaState.kind === "already_applied") {
+      return <button disabled className={disabledClass}>Application is under review</button>;
+    }
+
+    if (ctaState.kind === "coming_soon") {
+      return (
+        <button disabled className={disabledUpcomingClass}>
+          <span className="flex items-center gap-2"><Clock className="w-4 h-4" /> Coming Soon</span>
+        </button>
+      );
+    }
+
+    if (ctaState.kind === "registration_upcoming") {
+      return (
+        <button disabled className={disabledUpcomingClass}>
+          <span className="flex items-center gap-2"><Clock className="w-4 h-4" /> Registration opens {ctaState.date}</span>
+        </button>
+      );
+    }
+
+    if (ctaState.kind === "register_now") {
+      if (!accessStatus?.isAuthenticated) {
+        return (
+          <button
+            className={baseClass}
+            onClick={() => {
+              const target = `/course/${courseId}?login_intent=register`;
+              sessionStorage.setItem("postLoginRedirect", target);
+              window.location.href = `${buildApiUrl("/auth/google")}?redirect=${encodeURIComponent(target)}`;
+            }}
+          >
+            Apply for Cohort
+          </button>
+        );
+      }
+      return (
+        <button className={baseClass} onClick={() => setLocation(`/registration/${programType}/${courseId}`)}>
+          Apply for Cohort
+        </button>
+      );
+    }
+
+    return null;
+  };
+
   return (
     <div className="min-h-screen bg-[#f8f1e6] text-[#000000] font-sans relative">
       <style>{`
@@ -622,10 +804,19 @@ const CourseDetailsPage = (props: any) => {
           <div className="flex items-center gap-4">
             <button
               type="button"
-              onClick={() => setLocation("/")}
+              onClick={() => {
+                if (window.history.length > 2) {
+                  window.history.back();
+                } else {
+                  if (programType === "cohort") setLocation("/our-courses/cohort");
+                  else if (programType === "ondemand") setLocation("/our-courses/on-demand");
+                  else if (programType === "workshop") setLocation("/our-courses/workshops");
+                  else setLocation("/");
+                }
+              }}
               className="flex items-center gap-2 text-sm font-semibold text-[#f8f1e6]/80 hover:text-white transition"
             >
-              <ChevronLeft size={18} /> Home
+              <ChevronLeft size={18} /> Back
             </button>
             <div className="text-2xl font-extrabold text-[#f8f1e6] tracking-tight">
               Otto<span className="text-[#bf2f1f]">learn</span>
@@ -734,243 +925,7 @@ const CourseDetailsPage = (props: any) => {
             </div>
           </motion.div>
           <div className="mt-6 flex flex-wrap items-center gap-6">
-            {(() => {
-              // --- Cohort CTA State Machine ---
-              type CohortCtaState =
-                | { kind: "loading" }
-                | { kind: "not_cohort" } // non-cohort: use existing logic
-                | { kind: "already_applied" }
-                | { kind: "approved_member" }
-                | { kind: "approved_member_upcoming"; date: string; days: number }
-                | { kind: "coming_soon" }
-                | { kind: "registration_upcoming"; date: string }
-                | { kind: "register_now" };
-
-              const computeCtaState = (): CohortCtaState => {
-                if (!accessStatus) return { kind: "loading" };
-                if (programType !== "cohort") return { kind: "not_cohort" };
-
-                const now = new Date();
-
-                // Users already approved
-                if (accessStatus.isApprovedMember) {
-                  if (accessStatus.cohortStartsAt) {
-                    const startsAt = new Date(accessStatus.cohortStartsAt);
-                    if (startsAt > now) {
-                      const diffTime = Math.abs(startsAt.getTime() - now.getTime());
-                      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                      const dateStr = startsAt.toLocaleDateString('en-IN', {
-                        day: 'numeric',
-                        month: 'long',
-                        year: 'numeric',
-                      });
-                      return { kind: "approved_member_upcoming", date: dateStr, days: diffDays };
-                    }
-                  }
-                  return { kind: "approved_member" };
-                }
-                
-                // Users who already applied keep existing behavior
-                if (accessStatus.hasApplied) return { kind: "already_applied" };
-
-                // No cohorts exist at all -> Coming Soon
-                if (!cohorts || cohorts.length === 0) return { kind: "coming_soon" };
-
-                // Separate cohorts by registration window status
-                const openForRegistration: any[] = [];
-                const upcomingRegistration: any[] = [];
-
-                for (const c of cohorts) {
-                  const regStart = c.registrationStartsAt ? new Date(c.registrationStartsAt) : null;
-                  const regEnd = c.registrationEndsAt ? new Date(c.registrationEndsAt) : null;
-
-                  // If no registration dates set, treat as open
-                  if (!regStart && !regEnd) {
-                    openForRegistration.push(c);
-                    continue;
-                  }
-
-                  const started = !regStart || regStart <= now;
-                  const notEnded = !regEnd || regEnd >= now;
-
-                  if (started && notEnded) {
-                    openForRegistration.push(c);
-                  } else if (regStart && regStart > now) {
-                    upcomingRegistration.push(c);
-                  }
-                  // If regEnd < now, it's expired — skip
-                }
-
-                // Case: At least one cohort is open for registration right now
-                if (openForRegistration.length > 0) {
-                  return { kind: "register_now" };
-                }
-
-                // Case: No open cohorts, but some are upcoming
-                if (upcomingRegistration.length > 0) {
-                  // Find the soonest upcoming registration start
-                  upcomingRegistration.sort((a, b) =>
-                    new Date(a.registrationStartsAt).getTime() - new Date(b.registrationStartsAt).getTime()
-                  );
-                  const soonest = upcomingRegistration[0];
-                  const dt = new Date(soonest.registrationStartsAt);
-                  const dateStr = dt.toLocaleDateString('en-IN', {
-                    day: 'numeric',
-                    month: 'long',
-                    year: 'numeric',
-                  });
-                  return { kind: "registration_upcoming", date: dateStr };
-                }
-
-                // All cohorts have expired registration windows, no upcoming
-                return { kind: "coming_soon" };
-              };
-
-              const ctaState = computeCtaState();
-
-              // --- Render based on CTA state ---
-              if (ctaState.kind === "loading") {
-                return <div className="h-12 w-32 bg-white/10 animate-pulse rounded-lg"></div>;
-              }
-
-              if (ctaState.kind === "not_cohort") {
-                // Original non-cohort logic
-                return !accessStatus ? (
-                  <div className="h-12 w-32 bg-white/10 animate-pulse rounded-lg"></div>
-                ) : !accessStatus.isAuthenticated ? (
-                  <button
-                    className="bg-[#bf2f1f] hover:bg-[#a62619] text-white px-6 py-3 rounded-lg font-semibold shadow-lg transition active:scale-95"
-                    onClick={() => {
-                      const target = `/course/${courseId}?login_intent=register`;
-                      const redirectUrl = `${buildApiUrl("/auth/google")}?redirect=${encodeURIComponent(target)}`;
-                      sessionStorage.setItem("postLoginRedirect", target);
-                      window.location.href = redirectUrl;
-                    }}
-                  >
-                    Register Now
-                  </button>
-                ) : !accessStatus.hasApplied ? (
-                  <button
-                    className="bg-[#bf2f1f] hover:bg-[#a62619] text-white px-6 py-3 rounded-lg font-semibold shadow-lg transition active:scale-95"
-                    onClick={() => {
-                      setLocation(`/registration/${programType}/${courseId}`);
-                    }}
-                  >
-                    Register Now
-                  </button>
-                ) : !accessStatus.isApprovedMember ? (
-                  <button
-                    disabled
-                    className="bg-[#4a4845] text-white px-6 py-3 rounded-lg font-semibold shadow-inner cursor-not-allowed opacity-90"
-                  >
-                    Registration pending
-                  </button>
-                ) : (
-                  <button
-                    className="bg-[#0f766e] hover:bg-[#0d645d] text-white px-6 py-3 rounded-lg font-semibold shadow-lg transition active:scale-95 flex items-center gap-2"
-                    onClick={handleEnrollStart}
-                    disabled={enrolling}
-                  >
-                    <PlayCircle className="w-5 h-5" /> {enrolling ? "Validating..." : "Start Learning"}
-                  </button>
-                );
-              }
-
-              if (ctaState.kind === "approved_member") {
-                return (
-                  <button
-                    className="bg-[#0f766e] hover:bg-[#0d645d] text-white px-6 py-3 rounded-lg font-semibold shadow-lg transition active:scale-95 flex items-center gap-2"
-                    onClick={handleEnrollStart}
-                    disabled={enrolling}
-                  >
-                    <PlayCircle className="w-5 h-5" /> {enrolling ? "Validating..." : "Start Learning"}
-                  </button>
-                );
-              }
-
-              if (ctaState.kind === "approved_member_upcoming") {
-                return (
-                  <button
-                    disabled
-                    className="bg-gradient-to-r from-[#4a4845] to-[#5a5754] text-white/90 px-6 py-3 rounded-lg font-semibold shadow-inner cursor-not-allowed border border-white/10"
-                  >
-                    <span className="flex items-center gap-2">
-                      <Clock className="w-4 h-4" />
-                      Starts on {ctaState.date} ({ctaState.days} days)
-                    </span>
-                  </button>
-                );
-              }
-
-              if (ctaState.kind === "already_applied") {
-                return (
-                  <button
-                    disabled
-                    className="bg-[#4a4845] text-white px-6 py-3 rounded-lg font-semibold shadow-inner cursor-not-allowed opacity-90"
-                  >
-                    Application is under review
-                  </button>
-                );
-              }
-
-              if (ctaState.kind === "coming_soon") {
-                return (
-                  <button
-                    disabled
-                    className="bg-gradient-to-r from-[#4a4845] to-[#5a5754] text-white/90 px-6 py-3 rounded-lg font-semibold shadow-inner cursor-not-allowed border border-white/10"
-                  >
-                    <span className="flex items-center gap-2">
-                      <Clock className="w-4 h-4" />
-                      Coming Soon
-                    </span>
-                  </button>
-                );
-              }
-
-              if (ctaState.kind === "registration_upcoming") {
-                return (
-                  <button
-                    disabled
-                    className="bg-gradient-to-r from-[#4a4845] to-[#5a5754] text-white/90 px-6 py-3 rounded-lg font-semibold shadow-inner cursor-not-allowed border border-white/10"
-                  >
-                    <span className="flex items-center gap-2">
-                      <Clock className="w-4 h-4" />
-                      Registration opens {ctaState.date}
-                    </span>
-                  </button>
-                );
-              }
-
-              if (ctaState.kind === "register_now") {
-                if (!accessStatus.isAuthenticated) {
-                  return (
-                    <button
-                      className="bg-[#bf2f1f] hover:bg-[#a62619] text-white px-6 py-3 rounded-lg font-semibold shadow-lg transition active:scale-95"
-                      onClick={() => {
-                        const target = `/course/${courseId}?login_intent=register`;
-                        const redirectUrl = `${buildApiUrl("/auth/google")}?redirect=${encodeURIComponent(target)}`;
-                        sessionStorage.setItem("postLoginRedirect", target);
-                        window.location.href = redirectUrl;
-                      }}
-                    >
-                      Apply for Cohort
-                    </button>
-                  );
-                }
-                return (
-                  <button
-                    className="bg-[#bf2f1f] hover:bg-[#a62619] text-white px-6 py-3 rounded-lg font-semibold shadow-lg transition active:scale-95"
-                    onClick={() => {
-                      setLocation(`/registration/${programType}/${courseId}`);
-                    }}
-                  >
-                    Apply for Cohort
-                  </button>
-                );
-              }
-
-              return null;
-            })()}
+            {renderCtaButton("header")}
             <div className="text-[#f8f1e6]">
               <div className="text-3xl font-black">
                 {formatCurrency(courseMeta.displayPriceCents, "₹1,499")}
@@ -1339,18 +1294,16 @@ const CourseDetailsPage = (props: any) => {
       <section id="apply" className="bg-[#000000] relative border-t border-[#222]">
         <div className="container mx-auto px-6 md:px-12 py-4 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex flex-col">
-            <div className="text-[#f8f1e6] font-bold text-lg leading-tight tracking-wide">AI Native FullStack Developer</div>
-            <div className="text-[#888] text-sm">Limited-time free cohort</div>
+            <div className="text-[#f8f1e6] font-bold text-lg leading-tight tracking-wide">{courseTitle}</div>
+            {courseMeta.promoActive && (
+              <div className="text-[#888] text-sm">Limited-time enrollment</div>
+            )}
           </div>
           <div className="flex items-center gap-6">
-            <div className="hidden md:block text-[#f8f1e6] text-3xl font-black">₹0</div>
-            <button
-              onClick={handleEnrollStart}
-              disabled={enrolling}
-              className="bg-[#bf2f1f] hover:bg-[#a62619] text-white px-6 py-3 font-semibold transition active:scale-95 border border-[#bf2f1f]"
-            >
-              Apply for Cohort
-            </button>
+            <div className="hidden md:block text-[#f8f1e6] text-3xl font-black">
+              {formatCurrency(courseMeta.displayPriceCents, "₹1,499")}
+            </div>
+            {renderCtaButton("footer")}
           </div>
         </div>
       </section>

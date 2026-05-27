@@ -140,6 +140,7 @@ const Navbar: React.FC<NavbarProps> = ({
                         </button>
                     )}
                     {isAuthenticated && user ? (
+                        !isDashboard && (
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <button
@@ -204,8 +205,9 @@ const Navbar: React.FC<NavbarProps> = ({
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
+                        )
                     ) : (
-                        !isTutorPage && (
+                        !isTutorPage && !isDashboard && (
                             <button
                                 type="button"
                                 onClick={onLogin}
