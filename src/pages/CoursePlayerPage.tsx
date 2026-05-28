@@ -1231,10 +1231,14 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
       }
       const headers: HeadersInit = {};
       headers.Authorization = `Bearer ${freshSession.accessToken}`;
-      const res = await fetch(buildApiUrl(`/api/lessons/courses/${courseKey}/topics`), {
+      const programTypeQuery = isCohortProgram ? "cohort" : "ondemand";
+      const res = await fetch(
+        buildApiUrl(`/api/lessons/courses/${courseKey}/topics?programType=${programTypeQuery}`),
+        {
         credentials: "include",
         headers,
-      });
+        },
+      );
       if (!res.ok) {
         if (res.status === 401 || res.status === 403) {
           setLessons([]);

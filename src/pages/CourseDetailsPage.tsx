@@ -384,7 +384,7 @@ const CourseDetailsPage = (props: any) => {
         if (session?.accessToken) {
           headers["Authorization"] = `Bearer ${session.accessToken}`;
         }
-        const res = await fetch(buildApiUrl(`/api/courses/${courseId}/access-status`), { headers });
+        const res = await fetch(buildApiUrl(`/api/courses/${courseId}/access-status?programType=${programType}`), { headers });
         if (res.ok) {
           const data = await res.json();
           if (mounted) setAccessStatus(data);
@@ -397,7 +397,7 @@ const CourseDetailsPage = (props: any) => {
     };
     void fetchAccessStatus();
     return () => { mounted = false; };
-  }, [courseId]);
+  }, [courseId, programType]);
 
   useEffect(() => {
     if (!accessStatus || loading) return;
@@ -463,13 +463,16 @@ const CourseDetailsPage = (props: any) => {
     }
 
     try {
-      const response = await fetch(buildApiUrl(`/api/courses/${courseId}/enroll?checkOnly=true`), {
+      const response = await fetch(
+        buildApiUrl(`/api/courses/${courseId}/enroll?checkOnly=true&programType=${programType}`),
+        {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${session.accessToken}`,
         },
-      });
+      },
+      );
 
       if (response.status === 403) {
         const payload = await response.json().catch(() => null);
@@ -506,7 +509,7 @@ const CourseDetailsPage = (props: any) => {
         return { success: false };
       }
 
-      const response = await fetch(buildApiUrl(`/api/courses/${courseId}/enroll`), {
+      const response = await fetch(buildApiUrl(`/api/courses/${courseId}/enroll?programType=${programType}`), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
