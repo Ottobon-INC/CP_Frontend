@@ -241,112 +241,16 @@ const OnDemandPage: React.FC = () => {
 
             {/* Available Courses */}
             <section id="available-courses" className="bg-slate-50 py-32 border-t border-slate-200">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between mb-10 gap-6">
-                        <h2 className="text-2xl font-bold text-[#244855]">Available Courses</h2>
-
-                        <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
-                            {/* Duration Dropdown */}
-                            <div className="relative min-w-[180px]">
-                                <select
-                                    value={selectedDuration}
-                                    onChange={(e) => setSelectedDuration(e.target.value)}
-                                    className="appearance-none w-full pl-4 pr-10 py-2 rounded-lg border border-[#90AEAD]/30 bg-white focus:border-[#E64833] focus:ring-2 focus:ring-[#E64833]/10 transition-all text-sm font-medium text-[#244855] shadow-sm cursor-pointer"
-                                >
-                                    <option value="All">All Durations</option>
-                                    {durationOptions.map((duration) => (
-                                        <option key={duration} value={duration}>
-                                            {duration}
-                                        </option>
-                                    ))}
-                                </select>
-                                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-[#244855]">
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                    </svg>
-                                </div>
-                            </div>
-
-                            {/* Search Bar */}
-                            <div className="relative w-full md:w-80">
-                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <svg className="h-4 w-4 text-[#244855]/50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                    </svg>
-                                </div>
-                                <input
-                                    type="text"
-                                    placeholder="Search courses..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-2 rounded-lg border border-[#90AEAD]/30 bg-white focus:border-[#E64833] focus:ring-2 focus:ring-[#E64833]/10 transition-all text-sm font-medium text-[#244855] placeholder-[#244855]/40"
-                                />
-                            </div>
-                        </div>
+                <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center flex flex-col items-center justify-center min-h-[40vh]">
+                    <div className="inline-flex items-center justify-center p-6 bg-[#FBE9D0]/50 rounded-full mb-8 text-[#E64833] ring-8 ring-[#FBE9D0]/20 animate-pulse">
+                        <svg className="w-12 h-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
                     </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                        {coursesLoading ? (
-                            <div className="col-span-full py-12 text-center text-[#244855]/60">
-                                Loading available on-demand courses...
-                            </div>
-                        ) : coursesError ? (
-                            <div className="col-span-full py-12 text-center text-[#244855]/60">
-                                {coursesError}
-                            </div>
-                        ) : filteredCourses.length > 0 ? (
-                            filteredCourses.map((course) => (
-                                <div key={course.id} className="group bg-white rounded-[1.5rem] border border-slate-200 shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 flex flex-col h-full ring-1 ring-slate-100/50 overflow-hidden">
-
-                                    {/* Top Half: Image Background with Title & Description */}
-                                    <div className="relative h-[220px] flex-shrink-0 overflow-hidden">
-                                        <div className="absolute inset-0 bg-gradient-to-t from-[#1A1C2E] via-[#1A1C2E]/80 to-transparent z-10" />
-                                        <img
-                                            src={course.image}
-                                            alt={course.title}
-                                            className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700"
-                                        />
-
-                                        {/* Content Overlay */}
-                                        <div className="absolute inset-0 z-20 p-6 flex flex-col justify-end">
-                                            <div className="mb-3">
-                                                <span className="px-2.5 py-0.5 bg-white/20 backdrop-blur-md text-[9px] font-bold text-white uppercase tracking-wider rounded-md border border-white/20">
-                                                    {course.duration}
-                                                </span>
-                                            </div>
-
-                                            <h3 className="text-lg font-bold text-white mb-2 leading-tight">
-                                                {course.title}
-                                            </h3>
-
-                                            <p className="text-slate-200 text-xs leading-relaxed line-clamp-2">
-                                                {course.description}
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    {/* Bottom Half: Action */}
-                                    <div className="p-6 flex flex-col flex-grow bg-white">
-                                        <div className="mt-auto">
-                                            <button
-                                                onClick={() => setLocation(course.url)}
-                                                className="w-full py-2.5 bg-[#1A1C2E] group-hover:bg-indigo-600 text-white text-sm font-bold rounded-xl transition-colors shadow-md flex items-center justify-center gap-2"
-                                            >
-                                                Start Learning
-                                                <svg className="w-3.5 h-3.5 transform group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                                                </svg>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))
-                        ) : (
-                            <div className="col-span-full py-12 text-center text-[#244855]/60">
-                                {searchQuery ? `No courses found matching "${searchQuery}".` : "No active on-demand offerings found."}
-                            </div>
-                        )}
-                    </div>
+                    <h2 className="text-4xl md:text-5xl font-extrabold text-[#244855] mb-6 tracking-tight">Exciting Courses Coming Soon</h2>
+                    <p className="text-lg md:text-xl text-[#244855]/70 max-w-2xl mx-auto leading-relaxed">
+                        We are currently crafting new, cutting-edge on-demand learning experiences. Stay tuned for our upcoming curriculum designed to accelerate your growth.
+                    </p>
                 </div>
             </section>
             <Footer />

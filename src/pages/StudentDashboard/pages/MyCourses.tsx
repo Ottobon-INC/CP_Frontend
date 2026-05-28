@@ -113,7 +113,8 @@ export function MyCourses() {
       programType: 'catalog' as const,
     }));
 
-    return [...cohorts, ...onDemand, ...workshops];
+    // Temporarily remove onDemand courses from the list
+    return [...cohorts, ...workshops];
   }, [summary]);
 
   // Helpers
@@ -151,7 +152,8 @@ export function MyCourses() {
       return summary.catalog.filter(c => c.programType === 'cohort').slice(0, 3);
     }
     if (activeFilter === 'On-demand') {
-      return summary.catalog.filter(c => c.programType === 'ondemand').slice(0, 3);
+      // Temporarily hide on-demand recommendations
+      return [];
     }
     if (activeFilter === 'Workshops') {
       return summary.catalog.filter(c => c.programType === 'workshop').slice(0, 3);
@@ -159,16 +161,14 @@ export function MyCourses() {
     
     // For 'All', try to show a mix
     const cohorts = summary.catalog.filter(c => c.programType === 'cohort');
-    const ondemand = summary.catalog.filter(c => c.programType === 'ondemand');
     const workshops = summary.catalog.filter(c => c.programType === 'workshop');
     
     const mix: any[] = [];
     if (cohorts.length > 0) mix.push(cohorts[0]);
-    if (ondemand.length > 0) mix.push(ondemand[0]);
     if (workshops.length > 0) mix.push(workshops[0]);
     
-    // Fill the rest up to 3 if we don't have all types
-    const remaining = summary.catalog.filter(c => !mix.find(m => m.id === c.id));
+    // Fill the rest up to 3 if we don't have all types (excluding ondemand temporarily)
+    const remaining = summary.catalog.filter(c => c.programType !== 'ondemand' && !mix.find(m => m.id === c.id));
     return [...mix, ...remaining].slice(0, 3);
   }, [summary, activeFilter]);
 
@@ -227,6 +227,18 @@ export function MyCourses() {
           {activeFilter === 'Cohorts' ? (
             <div className="mt-4">
               <CohortsView hideSidebar={true} />
+            </div>
+          ) : activeFilter === 'On-demand' ? (
+            <div className="mt-8 bg-white rounded-[2rem] p-12 shadow-sm border border-retro-sage/20 flex flex-col items-center justify-center text-center min-h-[40vh]">
+              <div className="inline-flex items-center justify-center p-6 bg-[#FBE9D0]/50 rounded-full mb-8 text-[#E64833] animate-pulse ring-8 ring-[#FBE9D0]/20">
+                <svg className="w-12 h-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h3 className="text-3xl font-extrabold text-[#244855] mb-4">On-Demand Upgrading</h3>
+              <p className="text-lg text-[#244855]/70 max-w-lg mx-auto leading-relaxed">
+                We are currently crafting new, cutting-edge on-demand learning experiences. Your enrolled on-demand courses will be available here soon.
+              </p>
             </div>
           ) : (
             <>
