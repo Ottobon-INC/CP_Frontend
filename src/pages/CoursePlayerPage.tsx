@@ -1979,6 +1979,14 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
 
   const handleStartQuiz = async (moduleNo: number, assessmentId: string, topicPairIndex: number) => {
     if (!courseKey) return;
+    const section = sections.find((s) => s.assessmentId === assessmentId);
+    if (section?.passed) {
+      toast({
+        title: "Already attempted",
+        description: "This module quiz is already passed.",
+      });
+      return;
+    }
     if (!isModuleUnlocked(moduleNo)) {
       toast({
         title: "Module locked",
@@ -2012,10 +2020,19 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
       setNotesOpen(false);
       setStudyWidgetOpen(false);
     } catch (error) {
+      const message = error instanceof Error ? error.message : "Please try again";
+      const normalized = message.toLowerCase();
+      if (normalized.includes("already attempted and passed") || normalized.includes("statuscode\":409")) {
+        toast({
+          title: "Already attempted",
+          description: "This module quiz is already passed.",
+        });
+        return;
+      }
       toast({
         variant: "destructive",
         title: "Quiz unavailable",
-        description: error instanceof Error ? error.message : "Please try again",
+        description: message,
       });
     }
   };
@@ -3575,6 +3592,10 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
                         sub.slug === activeLesson?.slug,
                       );
                     const subLocked = sub.unlocked === false;
+                    const subSection = sub.type === "quiz"
+                      ? sections.find((section) => section.assessmentId === sub.assessmentId)
+                      : null;
+                    const subPassed = Boolean(subSection?.passed);
                     return (
                       <button
                         key={sub.id}
@@ -3590,7 +3611,11 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
                       >
                         {subLocked ? <Lock size={14} className="flex-shrink-0" /> : sub.type === "quiz" ? <FileText size={14} className="flex-shrink-0" /> : <Play size={14} className="flex-shrink-0" />}
                         <span className="truncate flex-1">{sub.title}</span>
-                        {sub.type === "quiz" && !sub.slug && <span className="text-[10px] text-[#f8f1e6]/50">Quiz</span>}
+                        {sub.type === "quiz" && !sub.slug && (
+                          <span className={`text-[10px] ${subPassed ? "text-green-300 font-semibold" : "text-[#f8f1e6]/50"}`}>
+                            {subPassed ? "Passed" : "Quiz"}
+                          </span>
+                        )}
                       </button>
                     );
                   })}
