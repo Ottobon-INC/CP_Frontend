@@ -262,6 +262,19 @@ interface QuizSection {
   moduleWindowEndsAt?: string | null;
 }
 
+interface ModuleProgressSummary {
+  moduleNo: number;
+  quizPassed: boolean;
+  unlocked: boolean;
+  isUnlocked: boolean;
+  assignmentsComplete: boolean;
+  assignmentsApproved: boolean;
+  moduleCompleted: boolean;
+  completedAt: string | null;
+  updatedAt: string;
+  passedAt: string | null;
+}
+
 interface QuizQuestion {
   questionId: string;
   prompt: string;
@@ -299,6 +312,14 @@ const isAssignmentApprovedForProgress = (assignment: Assignment) => assignment.s
 
 const isModuleFinalAssessmentSection = (section: QuizSection) =>
   /final\s+assessment/i.test(section.title ?? "");
+
+const isModuleFinalAssessmentLesson = (topicName?: string | null) => {
+  const normalized = topicName?.trim() ?? "";
+  if (!normalized) {
+    return false;
+  }
+  return /module(?:\s+\d+)?\s+final\s+assessment/i.test(normalized);
+};
 
 type InlineQuizPhase = "intro" | "loading" | "active" | "submitting" | "result" | "error";
 
@@ -669,6 +690,8 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
   const [modules, setModules] = useState<Module[]>([]);
   const [sections, setSections] = useState<QuizSection[]>([]);
   const [sectionsLoaded, setSectionsLoaded] = useState(false);
+  const [moduleProgress, setModuleProgress] = useState<ModuleProgressSummary[]>([]);
+  const [moduleProgressLoaded, setModuleProgressLoaded] = useState(false);
   const [courseProgress, setCourseProgress] = useState(0);
   const [courseTitle, setCourseTitle] = useState<string>("");
   const [activatedVideos, setActivatedVideos] = useState<Record<string, true>>({});
@@ -925,15 +948,45 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
     return passedByModule;
   }, [courseModuleNumbers, finalAssessmentTopicNumberByModule, sections]);
 
+  const hasFinalAssessmentByModule = useMemo(() => {
+    const byModule = new Map<number, boolean>();
+    courseModuleNumbers.forEach((moduleNo) => {
+      byModule.set(moduleNo, false);
+    });
+
+    courseModuleNumbers.forEach((moduleNo) => {
+      if (finalAssessmentTopicNumberByModule.has(moduleNo)) {
+        byModule.set(moduleNo, true);
+      }
+    });
+
+    sections.forEach((section) => {
+      if (section.moduleNo <= 0) {
+        return;
+      }
+      if (isModuleFinalAssessmentSection(section)) {
+        byModule.set(section.moduleNo, true);
+      }
+    });
+
+    return byModule;
+  }, [courseModuleNumbers, finalAssessmentTopicNumberByModule, sections]);
+
   const moduleCompletionById = useMemo(() => {
     const completionById = new Map<number, boolean>();
     courseModuleNumbers.forEach((moduleNo) => {
+      const hasFinalAssessment = hasFinalAssessmentByModule.get(moduleNo) === true;
       const finalAssessmentPassed = finalAssessmentPassedByModule.get(moduleNo) === true;
       const assignmentsApproved = assignmentApprovalProgressByModule.get(moduleNo)?.complete === true;
-      completionById.set(moduleNo, finalAssessmentPassed && assignmentsApproved);
+      completionById.set(moduleNo, assignmentsApproved && (!hasFinalAssessment || finalAssessmentPassed));
     });
     return completionById;
-  }, [assignmentApprovalProgressByModule, courseModuleNumbers, finalAssessmentPassedByModule]);
+  }, [
+    assignmentApprovalProgressByModule,
+    courseModuleNumbers,
+    hasFinalAssessmentByModule,
+    finalAssessmentPassedByModule,
+  ]);
 
   const moduleUnlockById = useMemo(() => {
     const unlockById = new Map<number, boolean>();
@@ -942,13 +995,16 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
     courseModuleNumbers.forEach((moduleNo) => {
       const unlocked = moduleNo <= 1 || previousModulesComplete;
       unlockById.set(moduleNo, unlocked);
-      const progress = assignmentApprovalProgressByModule.get(moduleNo);
-      const moduleComplete = assignmentLockDataReady ? (progress?.complete ?? true) : false;
+      const moduleComplete = assignmentLockDataReady ? (moduleCompletionById.get(moduleNo) === true) : false;
       previousModulesComplete = previousModulesComplete && moduleComplete;
     });
 
     return unlockById;
-  }, [assignmentApprovalProgressByModule, assignmentLockDataReady, courseModuleNumbers]);
+  }, [
+    assignmentLockDataReady,
+    courseModuleNumbers,
+    moduleCompletionById,
+  ]);
 
   const isModuleUnlocked = useCallback(
     (moduleNo: number | null | undefined) => {
@@ -1356,6 +1412,43 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
     }
   }, [courseKey, session?.accessToken]);
 
+  const fetchModuleProgress = useCallback(async () => {
+    if (!courseKey || !session?.accessToken) {
+      setModuleProgress([]);
+      setModuleProgressLoaded(true);
+      return;
+    }
+    setModuleProgressLoaded(false);
+    try {
+      const res = await fetch(buildApiUrl(`/api/quiz/progress/${courseKey}`), {
+        credentials: "include",
+        headers: { Authorization: `Bearer ${session.accessToken}` },
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+      const list: ModuleProgressSummary[] = Array.isArray(data?.modules)
+        ? data.modules.map((entry: any) => ({
+            moduleNo: entry.moduleNo,
+            quizPassed: Boolean(entry.quizPassed),
+            unlocked: Boolean(entry.unlocked),
+            isUnlocked: Boolean(entry.isUnlocked ?? entry.unlocked),
+            assignmentsComplete: Boolean(entry.assignmentsComplete),
+            assignmentsApproved: Boolean(entry.assignmentsApproved),
+            moduleCompleted: Boolean(entry.moduleCompleted),
+            completedAt: typeof entry.completedAt === "string" ? entry.completedAt : null,
+            updatedAt: typeof entry.updatedAt === "string" ? entry.updatedAt : "",
+            passedAt: typeof entry.passedAt === "string" ? entry.passedAt : null,
+          }))
+        : [];
+      setModuleProgress(list);
+    } catch (error) {
+      console.error("Failed to load module progress", error);
+      setModuleProgress([]);
+    } finally {
+      setModuleProgressLoaded(true);
+    }
+  }, [courseKey, session?.accessToken]);
+
   useEffect(() => {
     if (!topicsLoaded || !sectionsLoaded || courseModuleNumbers.length === 0) {
       setCourseProgress(0);
@@ -1363,7 +1456,7 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
     }
     if (isCohortProgram) {
       const completedModules = courseModuleNumbers.filter(
-        (moduleNo) => assignmentApprovalProgressByModule.get(moduleNo)?.complete === true,
+        (moduleNo) => moduleCompletionById.get(moduleNo) === true,
       );
       setCourseProgress(Math.round((completedModules.length / courseModuleNumbers.length) * 100));
       return;
@@ -1376,9 +1469,9 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
     );
     setCourseProgress(Math.round((passedModules.size / courseModuleNumbers.length) * 100));
   }, [
-    assignmentApprovalProgressByModule,
     courseModuleNumbers,
     isCohortProgram,
+    moduleCompletionById,
     sections,
     sectionsLoaded,
     topicsLoaded,
@@ -1492,14 +1585,14 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
       });
       const consumedSectionIds = new Set<string>();
       const moduleFinalLessonIndex = sortedLessons.findIndex((lesson) =>
-        /module\s+\d+\s+final\s+assessment/i.test(lesson.topicName),
+        isModuleFinalAssessmentLesson(lesson.topicName),
       );
 
       sortedLessons.forEach((lesson, lessonIndex) => {
         const directSections = (sectionsByTopicNumber.get(lesson.topicNumber) ?? [])
           .filter((section) => !consumedSectionIds.has(section.assessmentId))
           .sort((a, b) => a.topicPairIndex - b.topicPairIndex);
-        const isModuleFinalLesson = /module\s+\d+\s+final\s+assessment/i.test(lesson.topicName);
+        const isModuleFinalLesson = isModuleFinalAssessmentLesson(lesson.topicName);
         const isDesignatedModuleFinalHost = isModuleFinalLesson && moduleFinalLessonIndex === lessonIndex;
         const fallbackSectionsForModuleFinal = isDesignatedModuleFinalHost
           ? sectionForModule
@@ -1571,6 +1664,10 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
   useEffect(() => {
     void fetchSections();
   }, [fetchSections]);
+
+  useEffect(() => {
+    void fetchModuleProgress();
+  }, [fetchModuleProgress, learnerAssignmentsQuery.dataUpdatedAt]);
 
   useEffect(() => {
     if (!sessionHydrated || !topicsLoaded || !sectionsLoaded || lessons.length === 0 || modules.length === 0 || !courseKey) {
@@ -2059,7 +2156,7 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
     const normalizedActive = normalizeSlugValue(activeLesson.slug);
     if (!normalizedParam || normalizedParam !== normalizedActive) return;
 
-    const isModuleFinalLesson = /module\s+\d+\s+final\s+assessment/i.test(activeLesson.topicName);
+    const isModuleFinalLesson = isModuleFinalAssessmentLesson(activeLesson.topicName);
     if (!isModuleFinalLesson) return;
     if (!isModuleUnlocked(activeLesson.moduleNo)) return;
 
@@ -2143,6 +2240,7 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
       if (base?.passed) {
         toast({ title: "Quiz passed" });
         void fetchSections();
+        void fetchModuleProgress();
       } else {
         toast({ title: "Quiz submitted" });
       }
@@ -2390,6 +2488,7 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
           errorMessage: null,
         });
         void fetchSections();
+        void fetchModuleProgress();
       } catch (error) {
         setInlineQuizState(runtimeKey, {
           ...current,
@@ -2398,7 +2497,15 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
         });
       }
     },
-    [activeLesson?.topicId, emitTelemetry, fetchSections, inlineQuizStateByKey, session?.accessToken, setInlineQuizState],
+    [
+      activeLesson?.topicId,
+      emitTelemetry,
+      fetchModuleProgress,
+      fetchSections,
+      inlineQuizStateByKey,
+      session?.accessToken,
+      setInlineQuizState,
+    ],
   );
 
   const handleSendChat = useCallback(
@@ -3466,7 +3573,7 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
   const normalizedActiveLesson = normalizeSlugValue(activeLesson?.slug ?? "");
   const isRouteBoundToActiveLesson = normalizedRouteLesson.length > 0 && normalizedRouteLesson === normalizedActiveLesson;
   const isRouteModuleFinalLesson =
-    isRouteBoundToActiveLesson && /module\s+\d+\s+final\s+assessment/i.test(activeLesson?.topicName ?? "");
+    isRouteBoundToActiveLesson && isModuleFinalAssessmentLesson(activeLesson?.topicName ?? "");
   const routeModuleSection = isRouteModuleFinalLesson
     ? sections
       .filter(
