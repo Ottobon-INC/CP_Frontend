@@ -148,7 +148,7 @@ export function Home() {
           <p className="text-4xl font-black text-white leading-none tracking-tighter">
             {rank ? `#${rank}` : '—'}
           </p>
-          <p className="text-amber-100 text-[11px] font-bold uppercase tracking-widest mt-1">Rank</p>
+          <p className="text-amber-100 text-[11px] font-bold uppercase tracking-widest mt-1">Platform Rank</p>
         </div>
 
         {/* ── STREAK / CERTS ── lg:col-span-3 */}
@@ -302,7 +302,7 @@ export function Home() {
             <div className="text-6xl font-black text-retro-teal leading-none tracking-tighter">
               {rank ? `#${rank}` : '—'}
             </div>
-            <p className="text-retro-teal/40 text-[11px] font-bold uppercase tracking-widest mt-2">Your rank</p>
+            <p className="text-retro-teal/40 text-[11px] font-bold uppercase tracking-widest mt-2">Platform Rank</p>
           </div>
           <div className="flex items-center justify-between mt-3 pt-3 border-t border-retro-teal/10">
             <span className="text-[11px] text-retro-teal/50 font-semibold">See full standings</span>

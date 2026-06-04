@@ -208,6 +208,12 @@ export function Leaderboard() {
     }
   }, [dashboardData, selectedCourseId]);
 
+  const selectedCohort = dashboardData?.cohorts?.find(c => c.courseId === selectedCourseId) || 
+                         dashboardData?.onDemand?.find(c => c.courseId === selectedCourseId) ||
+                         dashboardData?.cohorts?.[0] ||
+                         dashboardData?.onDemand?.[0];
+  const courseName = selectedCohort?.title;
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -241,7 +247,7 @@ export function Leaderboard() {
             <div className="absolute -right-8 -top-8 w-32 h-32 bg-retro-bg rounded-full blur-3xl opacity-50 group-hover:opacity-80 transition-opacity" />
             
             <h3 className="text-lg font-bold mb-8 flex items-center gap-2">
-              <i className="fas fa-trophy text-retro-salmon" /> Your Current Standing
+              <i className="fas fa-trophy text-retro-salmon" /> Course Leaderboard Standing
             </h3>
             
             <div className="flex flex-wrap items-center justify-between gap-8">
@@ -251,24 +257,29 @@ export function Leaderboard() {
                   <span className="relative text-7xl font-black text-retro-salmon leading-none">#{summary?.rank}</span>
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-gray-400 text-[0.65rem] font-bold uppercase tracking-widest mb-1">Active Learner</span>
+                  <span className="text-gray-400 text-[0.65rem] font-bold uppercase tracking-widest mb-1">Course Rank</span>
                   <span className="text-3xl font-black text-retro-teal">{summary?.fullName}</span>
-                  <div className="flex gap-2 mt-2">
+                  <div className="flex flex-wrap gap-2 mt-2">
                     <span className="bg-green-50 text-green-600 text-[0.65rem] font-black px-2.5 py-1 rounded-lg border border-green-100 uppercase tracking-tight">
                       Active Streak: {summary?.streak} Days
                     </span>
+                    {courseName && (
+                      <span className="bg-retro-teal/5 text-retro-teal text-[0.65rem] font-black px-2.5 py-1 rounded-lg border border-retro-teal/10 uppercase tracking-tight flex items-center gap-1">
+                        <i className="fas fa-graduation-cap text-[0.7rem]" /> {courseName}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
               
               <div className="text-right">
-                <span className="text-gray-400 text-[0.65rem] font-bold uppercase tracking-widest block mb-1">Total Points Earned</span>
+                <span className="text-gray-400 text-[0.65rem] font-bold uppercase tracking-widest block mb-1">Course Points Earned</span>
                 <div className="text-5xl font-black text-retro-teal leading-tight mb-2 tracking-tighter">
                   {summary?.totalPoints.toLocaleString()} <span className="text-lg font-bold text-gray-300">PTS</span>
                 </div>
                 <div className="inline-flex items-center gap-1.5 bg-retro-teal/5 text-retro-teal text-xs font-bold px-3 py-1.5 rounded-full">
                   <i className="fas fa-chart-line" />
-                  You're ahead of <span className="font-black">{Math.min(99, 100 - (summary?.rank ?? 1))} %</span> of all learners
+                  You're ahead of <span className="font-black">{Math.min(99, 100 - (summary?.rank ?? 1))} %</span> of cohort learners
                 </div>
               </div>
             </div>
