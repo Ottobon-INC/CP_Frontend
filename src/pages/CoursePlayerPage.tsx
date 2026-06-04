@@ -289,8 +289,7 @@ type ModuleApprovalProgress = {
 };
 
 const MODULE_UNLOCK_COMPLETED_STATUSES = new Set([
-  "approved",
-  "reviewed"
+  "approved"
 ]);
 
 const isAssignmentCompletedForUnlock = (assignment: Assignment) =>
@@ -943,13 +942,13 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
     courseModuleNumbers.forEach((moduleNo) => {
       const unlocked = moduleNo <= 1 || previousModulesComplete;
       unlockById.set(moduleNo, unlocked);
-      const progress = assignmentProgressByModule.get(moduleNo);
+      const progress = assignmentApprovalProgressByModule.get(moduleNo);
       const moduleComplete = assignmentLockDataReady ? (progress?.complete ?? true) : false;
       previousModulesComplete = previousModulesComplete && moduleComplete;
     });
 
     return unlockById;
-  }, [assignmentLockDataReady, assignmentProgressByModule, courseModuleNumbers]);
+  }, [assignmentApprovalProgressByModule, assignmentLockDataReady, courseModuleNumbers]);
 
   const isModuleUnlocked = useCallback(
     (moduleNo: number | null | undefined) => {
@@ -1362,13 +1361,28 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
       setCourseProgress(0);
       return;
     }
+    if (isCohortProgram) {
+      const completedModules = courseModuleNumbers.filter(
+        (moduleNo) => assignmentApprovalProgressByModule.get(moduleNo)?.complete === true,
+      );
+      setCourseProgress(Math.round((completedModules.length / courseModuleNumbers.length) * 100));
+      return;
+    }
+
     const passedModules = new Set(
       sections
         .filter((section) => section.moduleNo > 0 && section.passed)
         .map((section) => section.moduleNo),
     );
     setCourseProgress(Math.round((passedModules.size / courseModuleNumbers.length) * 100));
-  }, [courseModuleNumbers, sections, sectionsLoaded, topicsLoaded]);
+  }, [
+    assignmentApprovalProgressByModule,
+    courseModuleNumbers,
+    isCohortProgram,
+    sections,
+    sectionsLoaded,
+    topicsLoaded,
+  ]);
 
   const fetchCohortProject = useCallback(async () => {
     if (!isCohortProgram) {
