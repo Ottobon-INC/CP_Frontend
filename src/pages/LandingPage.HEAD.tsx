@@ -2186,7 +2186,9 @@ function LandingPage() {
     };
   }, [isAuthenticated, user]);
 
-  const handleApplyTutor = () => setLocation('/become-a-tutor');
+  const handleApplyTutor = () => {
+    window.location.href = 'https://expert.ottobon.in/';
+  };
 
   const handleLogin = () => {
     trackEvent('auth_login_initiate', { source: 'navbar' });

@@ -224,7 +224,7 @@ export default function CoursesPage() {
             <Button
               variant="outline"
               className="border-slate-200 text-slate-700 hover:bg-slate-100"
-              onClick={() => setLocation("/become-a-tutor")}
+              onClick={() => window.location.href = "https://expert.ottobon.in/"}
             >
               Become a tutor
             </Button>

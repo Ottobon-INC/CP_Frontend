@@ -352,7 +352,7 @@ function formatStatusReason(reason?: string | null): string | null {
   const handleLogout = () => {
     clearStoredSession();
     toast({ title: 'Signed out' });
-    setLocation('/become-a-tutor');
+    window.location.href = 'https://expert.ottobon.in/';
   };
 
   const handleAssistantSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -455,7 +455,7 @@ function formatStatusReason(reason?: string | null): string | null {
             </CardHeader>
             <CardContent className="space-y-3">
               <p className="text-muted-foreground text-sm">Use your tutor credentials to access the dashboard.</p>
-              <Button onClick={() => setLocation('/become-a-tutor')}>Go to tutor login</Button>
+              <Button onClick={() => (window.location.href = 'https://expert.ottobon.in/')}>Go to tutor login</Button>
             </CardContent>
           </Card>
         </div>
