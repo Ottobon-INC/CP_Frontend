@@ -540,6 +540,8 @@ function ActiveCohortCard({ cohort }: { cohort: ActiveCohort }) {
 
 /* ─── Completed Cohort Card ─── */
 function CompletedCohortCard({ cohort }: { cohort: CompletedCohort }) {
+  const [, setLocation] = useLocation();
+
   return (
     <div className="bg-white rounded-xl shadow-sm p-5 border border-retro-sage/20 flex flex-col justify-between group cursor-pointer hover:border-retro-salmon/30 transition-all">
       <div>
@@ -560,14 +562,18 @@ function CompletedCohortCard({ cohort }: { cohort: CompletedCohort }) {
           Completed
         </span>
         {cohort.courseSlug ? (
-          <a
-            href={`/our-courses/${cohort.courseSlug}`}
+          <button
+            type="button"
+            onClick={() => setLocation(`/course/${cohort.courseSlug}/learn/start`)}
             className="text-[0.7rem] font-bold text-retro-teal hover:text-retro-salmon hover:translate-x-1 transition-all flex items-center gap-1.5"
           >
             View Recap <i className="fas fa-arrow-right text-[0.6rem]" />
-          </a>
+          </button>
         ) : (
-          <button className="text-[0.7rem] font-bold text-retro-teal hover:text-retro-salmon hover:translate-x-1 transition-all flex items-center gap-1.5">
+          <button
+            type="button"
+            className="text-[0.7rem] font-bold text-retro-teal hover:text-retro-salmon hover:translate-x-1 transition-all flex items-center gap-1.5"
+          >
             View Recap <i className="fas fa-arrow-right text-[0.6rem]" />
           </button>
         )}
