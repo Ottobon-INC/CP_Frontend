@@ -20,8 +20,8 @@ interface Blog {
 // ─── SEO helper: inject / update <head> meta tags dynamically ──────────────
 function useBlogListingSEO() {
   useEffect(() => {
-    const title = 'Insights & Stories | Ottolearn Blogs';
-    const description = 'Exploring the frontiers of AI, education, and the future of work. Read expert insights, tech career guidance, and more on the Ottolearn blog.';
+    const title = 'Insights & Stories | Ottobon Blogs';
+    const description = 'Exploring the frontiers of AI, education, and the future of work. Read expert insights, tech career guidance, and more on the Ottobon blog.';
     const canonicalUrl = 'https://learn.ottobon.in/blogs';
 
     const setMeta = (selector: string, value: string, attr = 'content') => {
@@ -56,7 +56,7 @@ function useBlogListingSEO() {
     setMeta('meta[name="twitter:description"]', description);
 
     return () => {
-      document.title = 'Ottolearn — AI-Native Learning Platform | Courses, Blogs & More';
+      document.title = 'Ottobon — AI-Native Learning Platform | Courses, Blogs & More';
     };
   }, []);
 }
@@ -181,7 +181,7 @@ const BlogsPage: React.FC = () => {
                              <div className="w-8 h-8 bg-retro-sage rounded-full flex items-center justify-center text-white font-bold text-xs">
                                OL
                              </div>
-                             <span className="text-xs font-bold text-retro-teal">Ottolearn Staff</span>
+                             <span className="text-xs font-bold text-retro-teal">Ottobon Staff</span>
                            </div>
                            <button 
                              onClick={(e) => {

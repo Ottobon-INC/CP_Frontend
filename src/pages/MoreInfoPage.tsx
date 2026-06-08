@@ -29,7 +29,7 @@ const TOPICS: Record<string, {
         details: (
             <div className="space-y-6">
                 <p className="text-lg text-gray-700">
-                    At Ottolearn, we believe in active, hands-on learning. Our platform isn't just about watching videos; it's about doing.
+                    At Ottobon, we believe in active, hands-on learning. Our platform isn't just about watching videos; it's about doing.
                     You will engage with real-world codebases, solve complex engineering problems, and receive instant feedback from our AI tutor.
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">

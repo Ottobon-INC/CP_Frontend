@@ -3,8 +3,9 @@ import { motion, useScroll, useTransform, Variants, useSpring, useInView, Animat
 import {
   ChevronRight, Search, Terminal, Users, LifeBuoy,
   Lock, Brain, Bot, ArrowDown, Plus, Minus, ArrowRight,
-  MessageSquare, UserCheck, Sparkles, Unlock, BookOpen, Timer, Briefcase
+  MessageSquare, UserCheck, Sparkles, Unlock, BookOpen, Timer, Briefcase, CheckCircle2, Menu, X, Play, Zap, Target, LogIn
 } from 'lucide-react';
+import logoImage from '@/logo.png';
 import { useLocation } from 'wouter';
 import { buildApiUrl } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
@@ -661,7 +662,7 @@ const Footer: React.FC = () => {
     <footer className="bg-retro-teal text-white py-12 border-t border-retro-sage/30">
       <div className="container mx-auto px-6 max-w-7xl flex flex-col md:flex-row justify-between items-center gap-6">
         <div className="text-2xl font-bold flex items-center gap-2">
-          <div className="w-6 h-6 bg-retro-salmon rounded transform rotate-45"></div>
+          <img src={logoImage} alt="Ottobon" className="h-8 w-auto object-contain" />
           {contentData.footer.brand}
         </div>
         <p className="text-white/60 text-sm">{contentData.footer.copyright}</p>
@@ -1244,7 +1245,9 @@ function LandingPage() {
     };
   }, [isAuthenticated, user]);
 
-  const handleApplyTutor = () => setLocation('/become-a-tutor');
+  const handleApplyTutor = () => {
+    window.location.href = 'https://expert.ottobon.in/';
+  };
 
   const handleLogin = () => {
     const homeRedirect = '/student-dashboard';

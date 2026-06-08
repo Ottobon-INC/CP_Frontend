@@ -18,7 +18,6 @@ import CongratsFeedbackPage from "@/pages/CongratsFeedbackPage";
 import CourseCertificatePage from "@/pages/CourseCertificatePage";
 import LandingPage from "@/pages/LandingPage";
 import AuthCallbackPage from "@/pages/AuthCallbackPage";
-import BecomeTutorPage from "@/pages/BecomeTutorPage";
 import CourseDetailsPage from "@/pages/CourseDetailsPage";
 
 import CohortPage from "@/pages/CohortPage";
@@ -56,7 +55,12 @@ function DashboardRoute({ component: Component }: { component: React.ComponentTy
 function Router() {
   return (
     <Switch>
-      <Route path="/become-a-tutor" component={BecomeTutorPage} />
+      <Route path="/become-a-tutor">
+        {() => {
+          window.location.replace("https://expert.ottobon.in/");
+          return null;
+        }}
+      </Route>
       <Route path="/methodology" component={MethodologyPage} />
       <Route path="/more-info" component={MoreInfoPage} />
       <Route path="/our-courses/cohort" component={CohortPage} />
@@ -212,7 +216,7 @@ function App({ isAuthenticated, user, setIsAuthenticated, setUser }: any) {
                 const target = `${buildApiUrl('/auth/google')}?redirect=${encodeURIComponent(homeRedirect)}`;
                 window.location.href = target;
               }}
-              onApplyTutor={() => window.location.href = '/become-a-tutor'}
+              onApplyTutor={() => window.location.href = 'https://expert.ottobon.in/'}
               isAuthenticated={isAuthenticated}
               user={user ?? undefined}
               onLogout={() => {

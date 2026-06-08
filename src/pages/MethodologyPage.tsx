@@ -125,7 +125,7 @@ const MethodologyPage: React.FC = () => {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.6 }}
                     >
-                        <h1 className="text-5xl md:text-6xl font-bold text-retro-teal mb-6">The Ottolearn Method</h1>
+                        <h1 className="text-5xl md:text-6xl font-bold text-retro-teal mb-6">The Ottobon Method</h1>
                         <p className="text-xl md:text-2xl text-retro-teal/70 max-w-3xl mx-auto mb-8 leading-relaxed">
                             We don't just sell courses. We guarantee mastery through a scientifically backed, AI-enhanced learning journey designed to make knowledge stick.
                         </p>

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { SuccessStepProps } from '@/types/registration'
+import { Link } from 'wouter'
 
 const SuccessStep = ({ studentData }: SuccessStepProps) => {
     const [copied, setCopied] = useState(false)
@@ -144,6 +145,18 @@ const SuccessStep = ({ studentData }: SuccessStepProps) => {
                             <span className="font-medium text-gray-600 truncate">{studentData.email}</span>
                         </div>
                     </div>
+                </div>
+
+                {/* Navigation Buttons */}
+                <div className="flex justify-center mt-8 mb-6">
+                    <Link href="/">
+                        <button className="bg-[#E64833] hover:bg-[#d53f2a] text-white font-bold py-3.5 px-8 rounded-full text-base transition-all transform hover:scale-105 shadow-md flex items-center justify-center gap-2 cursor-pointer">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                            </svg>
+                            Go to Homepage
+                        </button>
+                    </Link>
                 </div>
 
                 {/* Footer Tip */}

@@ -227,7 +227,7 @@
     "cta": "Hire from Us"
   },
   "methodology": {
-    "heading": "WHAT SETS OTTOLEARN APART?",
+    "heading": "WHAT SETS Ottobon APART?",
     "subheading": "Our flexible, AI-powered programs are designed to bring the elite engineering classroom to you, and are built around three key characteristics:",
     "columns": [
       {
@@ -243,10 +243,10 @@
         "desc": "Peer reviews. Mentor guidance. Real collaboration."
       }
     ],
-    "cta": "LEARN MORE ABOUT THE OTTOLEARN MODEL"
+    "cta": "LEARN MORE ABOUT THE Ottobon MODEL"
   },
   "valueProp": {
-    "heading": "Why Ottolearn?",
+    "heading": "Why Ottobon?",
     "subheading": "Integrated with our \"Training Wheels\" framework for guided mastery.",
     "bentoCards": [
       {
@@ -303,7 +303,7 @@
       }
     ],
     "chatBot": {
-      "name": "Ottolearn Assistant",
+      "name": "Ottobon Assistant",
       "statusLabel": "Online",
       "userMessage": "Can you explain the useEffect hook again?",
       "botReply": "Certainly! Based on the video at 2:30, `useEffect` handles side effects. It runs *after* the render."
@@ -354,8 +354,8 @@
     "primaryCta": "Login / Signup"
   },
   "footer": {
-    "brand": "Ottolearn",
-    "copyright": "© 2026 Ottolearn. All rights reserved.",
+    "brand": "Ottobon",
+    "copyright": "© 2026 Ottobon. All rights reserved.",
     "links": [
       {
         "label": "Privacy",

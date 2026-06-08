@@ -5,6 +5,10 @@ export interface ModuleProgress {
   moduleNo: number;
   quizPassed: boolean;
   unlocked: boolean;
+  isUnlocked: boolean;
+  assignmentsComplete: boolean;
+  assignmentsApproved: boolean;
+  moduleCompleted: boolean;
   completedAt: string | null;
   updatedAt: string;
   passedAt: string | null;
