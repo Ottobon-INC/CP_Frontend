@@ -15,6 +15,7 @@ import {
   Menu,
   X,
   Cpu,
+  PhoneCall,
   type LucideIcon,
 } from "lucide-react";
 import { useWidgetContext } from "./WidgetContext";
@@ -35,6 +36,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   BarChart3,
   MonitorPlay,
   Cpu,
+  PhoneCall,
 };
 
 export default function WidgetDock() {

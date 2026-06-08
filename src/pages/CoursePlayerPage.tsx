@@ -3687,6 +3687,7 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
   const widgetFeatureInput = useMemo<LessonFeatureInput | null>(() => {
     if (!activeLesson) return null;
     return {
+      topicId: activeLesson.topicId,
       videoUrl: activeLesson.videoUrl,
       textContent: activeLesson.textContent,
       pptUrl: activeLesson.pptUrl,
@@ -3718,6 +3719,12 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
     onToggleTts: toggleTts,
     ttsStatus,
   }), [toggleTts, ttsStatus]);
+
+  const widgetColdCallingProps = useMemo(() => ({
+    topicId: activeLesson?.topicId,
+    session,
+    onTelemetryEvent: emitTelemetry,
+  }), [activeLesson?.topicId, session, emitTelemetry]);
 
   const quizBlock = useMemo(() => {
     if (!contentBlocks?.blocks) return null;
@@ -4296,6 +4303,7 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
           studyProps={widgetStudyProps}
           ttsProps={widgetTtsProps}
           quizProps={widgetQuizProps}
+          coldCallingProps={widgetColdCallingProps}
           hidden={hideWidget}
         />
       )}
@@ -4306,6 +4314,7 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
           studyProps={widgetStudyProps}
           ttsProps={widgetTtsProps}
           quizProps={widgetQuizProps}
+          coldCallingProps={widgetColdCallingProps}
           hidden={hideWidget}
         />
       )}

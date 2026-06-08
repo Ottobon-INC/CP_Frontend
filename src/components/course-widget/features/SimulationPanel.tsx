@@ -36,7 +36,7 @@ export default function SimulationPanel() {
       {/* Main Simulation View Area */}
       <div className="flex-1 overflow-y-auto pr-1">
         <div className="mt-[-2rem] space-y-4">
-          <SimulationExercise simulation={activeLesson.simulation} />
+          <SimulationExercise simulation={activeLesson.simulation as any} />
         </div>
       </div>
     </div>

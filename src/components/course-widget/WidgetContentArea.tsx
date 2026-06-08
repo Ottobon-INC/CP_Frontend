@@ -14,6 +14,7 @@ const BookmarksPanel = lazy(() => import("./features/BookmarksPanel"));
 const ProgressTracker = lazy(() => import("./features/ProgressTracker"));
 const VideoGalleryPanel = lazy(() => import("./features/VideoGalleryPanel"));
 const SimulationPanel = lazy(() => import("./features/SimulationPanel"));
+const ColdCalling = lazy(() => import("@/components/ColdCalling"));
 
 /* ── Loading skeleton ── */
 function PanelSkeleton() {
@@ -43,14 +44,16 @@ const FEATURE_COMPONENTS: Record<WidgetFeatureId, React.LazyExoticComponent<Reac
   progress: ProgressTracker,
   "course-videos": VideoGalleryPanel,
   simulation: SimulationPanel,
+  "cold-calling": ColdCalling,
 };
 
 interface WidgetContentAreaProps {
   /** Extra props passed through to feature components */
-  chatProps?: Record<string, unknown>;
-  studyProps?: Record<string, unknown>;
-  ttsProps?: Record<string, unknown>;
-  quizProps?: Record<string, unknown>;
+  chatProps?: Record<string, unknown> | null;
+  studyProps?: Record<string, unknown> | null;
+  ttsProps?: Record<string, unknown> | null;
+  quizProps?: Record<string, unknown> | null;
+  coldCallingProps?: Record<string, unknown> | null;
 }
 
 export default function WidgetContentArea({
@@ -58,6 +61,7 @@ export default function WidgetContentArea({
   studyProps,
   ttsProps,
   quizProps,
+  coldCallingProps,
 }: WidgetContentAreaProps) {
   const { activeTab } = useWidgetContext();
 
@@ -101,13 +105,18 @@ export default function WidgetContentArea({
     if (activeTab === "assessment" && quizProps) {
       Object.assign(extraProps, quizProps);
     }
+    if (activeTab === "cold-calling" && coldCallingProps) {
+      Object.assign(extraProps, coldCallingProps);
+    }
 
     return (
       <Suspense fallback={<PanelSkeleton />}>
-        <Component {...extraProps} />
+        <div className="p-6">
+          <Component {...extraProps} />
+        </div>
       </Suspense>
     );
-  }, [activeTab, chatProps, studyProps, ttsProps, quizProps]);
+  }, [activeTab, chatProps, studyProps, ttsProps, quizProps, coldCallingProps]);
 
   return <>{content}</>;
 }

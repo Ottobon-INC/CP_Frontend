@@ -19,7 +19,8 @@ export type WidgetFeatureId =
   | "bookmarks"
   | "progress"
   | "course-videos"
-  | "simulation";
+  | "simulation"
+  | "cold-calling";
 
 export interface WidgetFeature {
   id: WidgetFeatureId;
@@ -35,6 +36,7 @@ export interface WidgetFeature {
 }
 
 export interface LessonFeatureInput {
+  topicId?: string | null;
   videoUrl?: string | null;
   textContent?: string | null;
   pptUrl?: string | null;
@@ -64,6 +66,7 @@ export function resolveModuleFeatures(
   const hasPpt = Boolean(lesson?.pptUrl?.trim());
   const hasQuiz = Boolean(lesson?.hasQuizBlocks);
   const hasSimulation = Boolean(lesson?.hasSimulation);
+  const hasColdCalling = Boolean(lesson?.topicId);
 
   const features: WidgetFeature[] = [
     {
@@ -137,6 +140,14 @@ export function resolveModuleFeatures(
       tooltip: "Simulation Lab",
       available: hasSimulation,
       order: 8.5,
+    },
+    {
+      id: "cold-calling",
+      label: "Cold Calling",
+      icon: "PhoneCall",
+      tooltip: "Cold Calling",
+      available: hasColdCalling,
+      order: 8.7,
     },
     {
       id: "resources",

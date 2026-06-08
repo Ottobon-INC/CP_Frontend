@@ -42,6 +42,60 @@ const markdownComponents: Components = {
   ),
 };
 
+const resolveTextVariant = (data: Record<string, unknown> | undefined) => {
+  if (!data) return "";
+  const variants =
+    typeof data.variants === "object" && data.variants
+      ? (data.variants as Record<string, unknown>)
+      : null;
+  const fromVariants =
+    variants && typeof variants.default === "string"
+      ? (variants.default as string)
+      : variants && typeof variants.normal === "string"
+        ? (variants.normal as string)
+        : variants
+          ? (Object.values(variants).find((value) => typeof value === "string") as string | undefined)
+          : null;
+  const content = typeof data.content === "string" && data.content ? data.content : undefined;
+  const markdown = typeof data.markdown === "string" && data.markdown ? data.markdown : undefined;
+  return (fromVariants ?? content ?? markdown ?? "").trim();
+};
+
+const extractTextFromBlocks = (raw: string): string => {
+  const trimmed = raw.trim();
+  if (!trimmed.startsWith("{") || !trimmed.endsWith("}")) {
+    return raw;
+  }
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (!parsed || typeof parsed !== "object") return raw;
+    const blocksRaw = (parsed as Record<string, unknown>).blocks;
+    if (!Array.isArray(blocksRaw)) return raw;
+
+    const markdownParts: string[] = [];
+    blocksRaw.forEach((block: any) => {
+      if (block && typeof block === "object") {
+        if (block.type === "text") {
+          const text = resolveTextVariant(block.data);
+          if (text) {
+            markdownParts.push(text);
+          }
+        } else if (block.type === "image") {
+          const imgUrl = block.data?.url;
+          const alt = block.data?.alt || "Image";
+          const caption = block.data?.caption || "";
+          if (imgUrl) {
+            markdownParts.push(`![${alt}](${imgUrl})${caption ? `\n\n*${caption}*` : ""}`);
+          }
+        }
+      }
+    });
+    return markdownParts.join("\n\n");
+  } catch {
+    return raw;
+  }
+};
+
 interface StudyMaterialViewerProps {
   autoStartTts?: boolean;
   formattedStudyText?: string;
@@ -59,9 +113,8 @@ export default function StudyMaterialViewer({
 
   // Use external formatted text if provided, otherwise fall back to raw lesson textContent
   const studyText = useMemo(() => {
-    if (externalText) return externalText;
-    const raw = activeLesson?.textContent?.trim();
-    return raw || "";
+    const raw = externalText || activeLesson?.textContent?.trim() || "";
+    return extractTextFromBlocks(raw);
   }, [externalText, activeLesson?.textContent]);
 
   if (!studyText) {

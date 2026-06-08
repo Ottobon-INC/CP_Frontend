@@ -6,10 +6,11 @@ import WidgetContentArea from "./WidgetContentArea";
 import "./widget.css";
 
 interface WidgetContainerProps {
-  chatProps?: Record<string, unknown>;
-  studyProps?: Record<string, unknown>;
-  ttsProps?: Record<string, unknown>;
-  quizProps?: Record<string, unknown>;
+  chatProps?: Record<string, unknown> | null;
+  studyProps?: Record<string, unknown> | null;
+  ttsProps?: Record<string, unknown> | null;
+  quizProps?: Record<string, unknown> | null;
+  coldCallingProps?: Record<string, unknown> | null;
   hidden?: boolean;
 }
 
@@ -18,6 +19,7 @@ export default function WidgetContainer({
   studyProps,
   ttsProps,
   quizProps,
+  coldCallingProps,
   hidden = false,
 }: WidgetContainerProps) {
   const { isExpanded, closeWidget } = useWidgetContext();
@@ -51,6 +53,7 @@ export default function WidgetContainer({
                 studyProps={studyProps}
                 ttsProps={ttsProps}
                 quizProps={quizProps}
+                coldCallingProps={coldCallingProps}
               />
             </WidgetPanel>
           </div>
