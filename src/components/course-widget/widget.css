@@ -1,0 +1,222 @@
+/* ═══════════════════════════════════════════════
+   Course Widget — Styles & Animations
+   Matches the Ottolearn platform design language
+   ═══════════════════════════════════════════════ */
+
+/* ── Dock glow effect ── */
+@keyframes widget-icon-glow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(191, 47, 31, 0);
+  }
+  50% {
+    box-shadow: 0 0 12px 2px rgba(191, 47, 31, 0.35);
+  }
+}
+
+.widget-icon-glow {
+  animation: widget-icon-glow 2.4s ease-in-out infinite;
+}
+
+/* ── Active tab indicator ── */
+@keyframes widget-tab-pulse {
+  0%, 100% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scaleX(1.15);
+    opacity: 0.8;
+  }
+}
+
+.widget-active-indicator {
+  animation: widget-tab-pulse 1.8s ease-in-out infinite;
+}
+
+/* ── Panel slide-in ── */
+@keyframes widget-panel-slide-in {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes widget-panel-slide-out {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+.widget-panel-enter {
+  animation: widget-panel-slide-in 0.3s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+}
+
+.widget-panel-exit {
+  animation: widget-panel-slide-out 0.25s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+}
+
+/* ── Content fade transition ── */
+@keyframes widget-content-fade {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.widget-content-enter {
+  animation: widget-content-fade 0.25s ease-out forwards;
+}
+
+/* ── Dock icon hover ── */
+.widget-dock-icon {
+  transition: all 0.2s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.widget-dock-icon:hover {
+  transform: scale(1.15);
+}
+
+.widget-dock-icon:active {
+  transform: scale(0.95);
+}
+
+/* ── Custom scrollbar for widget panels ── */
+.widget-scrollbar::-webkit-scrollbar {
+  width: 5px;
+}
+
+.widget-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.widget-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(74, 72, 69, 0.25);
+  border-radius: 10px;
+}
+
+.widget-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(74, 72, 69, 0.45);
+}
+
+/* Firefox */
+.widget-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(74, 72, 69, 0.25) transparent;
+}
+
+/* ── Bottom sheet handle ── */
+.widget-sheet-handle {
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(74, 72, 69, 0.35);
+  margin: 8px auto 4px;
+}
+
+/* ── Skeleton shimmer (widget-scoped) ── */
+@keyframes widget-shimmer {
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: calc(200px + 100%) 0;
+  }
+}
+
+.widget-skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(74, 72, 69, 0.08) 0%,
+    rgba(74, 72, 69, 0.15) 50%,
+    rgba(74, 72, 69, 0.08) 100%
+  );
+  background-size: 200px 100%;
+  animation: widget-shimmer 1.5s ease-in-out infinite;
+  border-radius: 8px;
+}
+
+/* ── Backdrop for tablet overlay ── */
+.widget-backdrop {
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+/* ── Dock container ── */
+.widget-dock-container {
+  background: rgba(0, 0, 0, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-left: 1px solid rgba(74, 72, 69, 0.3);
+}
+
+/* ── Panel container ── */
+.widget-panel-container {
+  background: rgba(248, 241, 230, 0.97);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-left: 1px solid rgba(74, 72, 69, 0.2);
+}
+
+/* ── Mobile bottom sheet ── */
+@keyframes widget-sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes widget-sheet-down {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(100%);
+  }
+}
+
+.widget-sheet-enter {
+  animation: widget-sheet-up 0.35s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+}
+
+.widget-sheet-exit {
+  animation: widget-sheet-down 0.25s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+}
+
+/* ── Feature-specific tooltip ── */
+.widget-tooltip {
+  pointer-events: none;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: #000;
+  color: #f8f1e6;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  transform: translateX(-8px);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.widget-dock-icon:hover + .widget-tooltip,
+.widget-dock-icon:focus-visible + .widget-tooltip {
+  opacity: 1;
+  transform: translateX(0);
+}
