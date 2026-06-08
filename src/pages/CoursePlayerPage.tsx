@@ -2903,8 +2903,25 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
     });
   }, [scrollMainToTop]);
 
+  const cleanWordSpans = useCallback((container: HTMLElement | null) => {
+    if (!container) return;
+    const spans = Array.from(container.querySelectorAll(".tts-word"));
+    spans.forEach((span) => {
+      const parent = span.parentNode;
+      if (parent) {
+        while (span.firstChild) {
+          parent.insertBefore(span.firstChild, span);
+        }
+        parent.removeChild(span);
+        parent.normalize();
+      }
+    });
+  }, []);
+
   const buildTtsSegments = useCallback(() => {
-    const container = studyContentRef.current;
+    const mainContainer = document.getElementById("main-study-content");
+    const widgetContainer = document.getElementById("widget-study-content");
+    const container = mainContainer || widgetContainer;
     if (!container) {
       ttsSegmentsRef.current = [];
       ttsOffsetsRef.current = [];
@@ -2947,105 +2964,109 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
       window.cancelAnimationFrame(ttsScrollRafRef.current);
       ttsScrollRafRef.current = null;
     }
-    if (ttsWordSpanRef.current?.parentNode) {
-      const span = ttsWordSpanRef.current;
-      const parent = span.parentNode;
-      if (parent) {
-        while (span.firstChild) {
-          parent.insertBefore(span.firstChild, span);
-        }
-        parent.removeChild(span);
-        parent.normalize();
-      }
-      ttsWordSpanRef.current = null;
-    }
+    cleanWordSpans(document.getElementById("main-study-content"));
+    cleanWordSpans(document.getElementById("widget-study-content"));
+    ttsWordSpanRef.current = null;
     if (ttsActiveIndexRef.current !== null) {
-      const prev = ttsSegmentsRef.current[ttsActiveIndexRef.current];
-      prev?.classList.remove("tts-active");
+      const mainContainer = document.getElementById("main-study-content");
+      const widgetContainer = document.getElementById("widget-study-content");
+      mainContainer?.querySelectorAll("[data-tts-segment]").forEach((el) => el.classList.remove("tts-active"));
+      widgetContainer?.querySelectorAll("[data-tts-segment]").forEach((el) => el.classList.remove("tts-active"));
       ttsActiveIndexRef.current = null;
     }
     ttsUtteranceRef.current = null;
     setTtsStatus("idle");
-  }, []);
+  }, [cleanWordSpans]);
 
   const activateTtsSegment = useCallback((index: number) => {
-    const nodes = ttsSegmentsRef.current;
-    if (!nodes.length) return;
-    const clamped = Math.max(0, Math.min(nodes.length - 1, index));
+    const mainContainer = document.getElementById("main-study-content");
+    const widgetContainer = document.getElementById("widget-study-content");
+    const mainNodes = mainContainer ? Array.from(mainContainer.querySelectorAll<HTMLElement>("[data-tts-segment]")) : [];
+    const widgetNodes = widgetContainer ? Array.from(widgetContainer.querySelectorAll<HTMLElement>("[data-tts-segment]")) : [];
+    
+    if (!mainNodes.length && !widgetNodes.length) return;
+    const maxLen = Math.max(mainNodes.length, widgetNodes.length);
+    const clamped = Math.max(0, Math.min(maxLen - 1, index));
+
     if (ttsActiveIndexRef.current !== null && ttsActiveIndexRef.current !== clamped) {
-      const prev = nodes[ttsActiveIndexRef.current];
-      prev?.classList.remove("tts-active");
+      mainNodes[ttsActiveIndexRef.current]?.classList.remove("tts-active");
+      widgetNodes[ttsActiveIndexRef.current]?.classList.remove("tts-active");
     }
-    const next = nodes[clamped];
-    if (next) {
-      next.classList.add("tts-active");
-      next.scrollIntoView({ behavior: "smooth", block: "center" });
-      ttsActiveIndexRef.current = clamped;
+
+    const nextMain = mainNodes[clamped];
+    const nextWidget = widgetNodes[clamped];
+    if (nextMain) {
+      nextMain.classList.add("tts-active");
+      if (!widgetContainer) {
+        nextMain.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
     }
+    if (nextWidget) {
+      nextWidget.classList.add("tts-active");
+      nextWidget.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+    ttsActiveIndexRef.current = clamped;
   }, []);
 
   const highlightWordInSegment = useCallback((segmentIndex: number, charIndex: number) => {
-    const nodes = ttsSegmentsRef.current;
+    const mainContainer = document.getElementById("main-study-content");
+    const widgetContainer = document.getElementById("widget-study-content");
+    const mainNodes = mainContainer ? Array.from(mainContainer.querySelectorAll<HTMLElement>("[data-tts-segment]")) : [];
+    const widgetNodes = widgetContainer ? Array.from(widgetContainer.querySelectorAll<HTMLElement>("[data-tts-segment]")) : [];
     const texts = ttsSegmentTextsRef.current;
-    const target = nodes[segmentIndex];
-    const text = texts[segmentIndex] ?? "";
-    if (!target || !text) return;
 
-    if (ttsWordSpanRef.current?.parentNode) {
-      const span = ttsWordSpanRef.current;
-      const parent = span.parentNode;
-      if (parent) {
-        while (span.firstChild) {
-          parent.insertBefore(span.firstChild, span);
-        }
-        parent.removeChild(span);
-        parent.normalize();
+    cleanWordSpans(mainContainer);
+    cleanWordSpans(widgetContainer);
+
+    const applyHighlight = (target: HTMLElement | null) => {
+      const text = texts[segmentIndex] ?? "";
+      if (!target || !text) return;
+
+      let start = Math.max(0, Math.min(text.length - 1, charIndex));
+      while (start < text.length && /\s/.test(text[start])) {
+        start += 1;
       }
-      ttsWordSpanRef.current = null;
-    }
-
-    let start = Math.max(0, Math.min(text.length - 1, charIndex));
-    while (start < text.length && /\s/.test(text[start])) {
-      start += 1;
-    }
-    let end = start;
-    while (end < text.length && !/\s/.test(text[end])) {
-      end += 1;
-    }
-    if (end <= start) return;
-
-    const findNodeAtOffset = (root: HTMLElement, offset: number) => {
-      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-      let currentOffset = 0;
-      let node: Node | null = walker.nextNode();
-      while (node) {
-        const len = node.textContent?.length ?? 0;
-        if (currentOffset + len >= offset) {
-          return { node, offset: offset - currentOffset };
-        }
-        currentOffset += len;
-        node = walker.nextNode();
+      let end = start;
+      while (end < text.length && !/\s/.test(text[end])) {
+        end += 1;
       }
-      return null;
+      if (end <= start) return;
+
+      const findNodeAtOffset = (root: HTMLElement, offset: number) => {
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+        let currentOffset = 0;
+        let node: Node | null = walker.nextNode();
+        while (node) {
+          const len = node.textContent?.length ?? 0;
+          if (currentOffset + len >= offset) {
+            return { node, offset: offset - currentOffset };
+          }
+          currentOffset += len;
+          node = walker.nextNode();
+        }
+        return null;
+      };
+
+      const startNode = findNodeAtOffset(target, start);
+      const endNode = findNodeAtOffset(target, end);
+      if (!startNode || !endNode) return;
+      if (startNode.node !== endNode.node) {
+        return;
+      }
+
+      const textNode = startNode.node as Text;
+      if (!textNode.parentNode) return;
+      const wordNode = textNode.splitText(startNode.offset);
+      wordNode.splitText(end - start);
+      const span = document.createElement("span");
+      span.className = "tts-word";
+      span.textContent = wordNode.textContent ?? "";
+      wordNode.parentNode?.replaceChild(span, wordNode);
     };
 
-    const startNode = findNodeAtOffset(target, start);
-    const endNode = findNodeAtOffset(target, end);
-    if (!startNode || !endNode) return;
-    if (startNode.node !== endNode.node) {
-      return;
-    }
-
-    const textNode = startNode.node as Text;
-    if (!textNode.parentNode) return;
-    const wordNode = textNode.splitText(startNode.offset);
-    wordNode.splitText(end - start);
-    const span = document.createElement("span");
-    span.className = "tts-word";
-    span.textContent = wordNode.textContent ?? "";
-    wordNode.parentNode?.replaceChild(span, wordNode);
-    ttsWordSpanRef.current = span;
-  }, []);
+    if (mainNodes[segmentIndex]) applyHighlight(mainNodes[segmentIndex]);
+    if (widgetNodes[segmentIndex]) applyHighlight(widgetNodes[segmentIndex]);
+  }, [cleanWordSpans]);
 
   const startTts = useCallback(() => {
     if (typeof window === "undefined") return;
@@ -4087,7 +4108,7 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
               <div className={`w-full ${studySectionPadding} space-y-8`}>
                 {!hasBlockLayout && renderStudyHeader()}
 
-                <div className="space-y-4 text-left" ref={studyContentRef}>
+                <div id="main-study-content" className="space-y-4 text-left" ref={studyContentRef}>
                   {hasStudyContent && (
                     <div className="sticky top-24 z-10 flex justify-end">
                       <button

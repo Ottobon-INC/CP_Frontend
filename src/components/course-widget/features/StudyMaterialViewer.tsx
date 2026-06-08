@@ -8,19 +8,20 @@ import type { Components } from "react-markdown";
 
 const markdownComponents: Components = {
   h1: (props) => (
-    <h1 className="text-xl font-black text-[#1c242c] mb-4 tracking-tight" {...props} />
+    <h1 data-tts-segment className="text-xl font-black text-[#1c242c] mb-4 tracking-tight" {...props} />
   ),
   h2: (props) => (
     <h2
+      data-tts-segment
       className="text-lg font-bold text-[#bf2f1f] mt-6 mb-3 border-l-3 border-[#bf2f1f] pl-2.5"
       {...props}
     />
   ),
   h3: (props) => (
-    <h3 className="text-base font-semibold text-[#1e3a47] mt-4 mb-2 uppercase tracking-wide" {...props} />
+    <h3 data-tts-segment className="text-base font-semibold text-[#1e3a47] mt-4 mb-2 uppercase tracking-wide" {...props} />
   ),
   p: (props) => (
-    <p className="text-sm leading-6 text-[#2c3e50] mb-3" {...props} />
+    <p data-tts-segment className="text-sm leading-6 text-[#2c3e50] mb-3" {...props} />
   ),
   ul: (props) => (
     <ul className="list-disc marker:text-[#bf2f1f] pl-5 space-y-1.5 text-[#2c3e50] text-sm" {...props} />
@@ -28,9 +29,10 @@ const markdownComponents: Components = {
   ol: (props) => (
     <ol className="list-decimal pl-5 space-y-1.5 text-[#2c3e50] text-sm" {...props} />
   ),
-  li: (props) => <li className="leading-relaxed" {...props} />,
+  li: (props) => <li data-tts-segment className="leading-relaxed" {...props} />,
   blockquote: (props) => (
     <blockquote
+      data-tts-segment
       className="border-l-3 border-[#bf2f1f]/50 bg-white/80 rounded-r-xl px-3 py-2 text-[#4a4845] italic text-sm shadow-sm"
       {...props}
     />
@@ -61,41 +63,6 @@ const resolveTextVariant = (data: Record<string, unknown> | undefined) => {
   return (fromVariants ?? content ?? markdown ?? "").trim();
 };
 
-const extractTextFromBlocks = (raw: string): string => {
-  const trimmed = raw.trim();
-  if (!trimmed.startsWith("{") || !trimmed.endsWith("}")) {
-    return raw;
-  }
-  try {
-    const parsed = JSON.parse(trimmed);
-    if (!parsed || typeof parsed !== "object") return raw;
-    const blocksRaw = (parsed as Record<string, unknown>).blocks;
-    if (!Array.isArray(blocksRaw)) return raw;
-
-    const markdownParts: string[] = [];
-    blocksRaw.forEach((block: any) => {
-      if (block && typeof block === "object") {
-        if (block.type === "text") {
-          const text = resolveTextVariant(block.data);
-          if (text) {
-            markdownParts.push(text);
-          }
-        } else if (block.type === "image") {
-          const imgUrl = block.data?.url;
-          const alt = block.data?.alt || "Image";
-          const caption = block.data?.caption || "";
-          if (imgUrl) {
-            markdownParts.push(`![${alt}](${imgUrl})${caption ? `\n\n*${caption}*` : ""}`);
-          }
-        }
-      }
-    });
-    return markdownParts.join("\n\n");
-  } catch {
-    return raw;
-  }
-};
-
 interface StudyMaterialViewerProps {
   autoStartTts?: boolean;
   formattedStudyText?: string;
@@ -111,11 +78,24 @@ export default function StudyMaterialViewer({
 }: StudyMaterialViewerProps) {
   const { activeLesson } = useWidgetContext();
 
-  // Use external formatted text if provided, otherwise fall back to raw lesson textContent
   const studyText = useMemo(() => {
-    const raw = externalText || activeLesson?.textContent?.trim() || "";
-    return extractTextFromBlocks(raw);
+    return externalText || activeLesson?.textContent?.trim() || "";
   }, [externalText, activeLesson?.textContent]);
+
+  const blocks = useMemo(() => {
+    const raw = studyText.trim();
+    if (raw.startsWith("{") && raw.endsWith("}")) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === "object" && Array.isArray(parsed.blocks)) {
+          return parsed.blocks as any[];
+        }
+      } catch (e) {
+        // Fall back to null
+      }
+    }
+    return null;
+  }, [studyText]);
 
   if (!studyText) {
     return (
@@ -132,7 +112,7 @@ export default function StudyMaterialViewer({
   }
 
   return (
-    <div className="p-4 space-y-4">
+    <div id="widget-study-content" className="p-4 space-y-4">
       {/* TTS Control */}
       {onToggleTts && (
         <div className="flex justify-end">
@@ -154,16 +134,55 @@ export default function StudyMaterialViewer({
       )}
 
       {/* Study Content */}
-      <div className="rounded-2xl border border-[#000000]/8 bg-white shadow-sm overflow-hidden">
-        <div className="p-4 prose prose-sm max-w-none">
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
-            rehypePlugins={[rehypeSanitize]}
-            components={markdownComponents}
-          >
-            {studyText}
-          </ReactMarkdown>
-        </div>
+      <div className="space-y-4">
+        {blocks ? (
+          blocks.map((block, index) => {
+            const key = block.id || `${block.type}-${index}`;
+            const data = block.data;
+            if (block.type === "text") {
+              const textContent = resolveTextVariant(data);
+              if (!textContent) return null;
+              return (
+                <div key={key} className="rounded-2xl border border-[#000000]/10 bg-white shadow-sm p-4 prose prose-sm max-w-none text-[#1e293b]">
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    rehypePlugins={[rehypeSanitize]}
+                    components={markdownComponents}
+                  >
+                    {textContent}
+                  </ReactMarkdown>
+                </div>
+              );
+            }
+            if (block.type === "image") {
+              const url = typeof data?.url === "string" ? data.url.trim() : "";
+              if (!url) return null;
+              const alt = typeof data?.alt === "string" ? data.alt.trim() : "Lesson visual";
+              const caption = typeof data?.caption === "string" ? data.caption.trim() : "";
+              return (
+                <figure key={key} className="rounded-2xl border border-[#000000]/10 bg-white overflow-hidden shadow-sm">
+                  <img src={url} alt={alt} className="w-full object-cover" loading="lazy" />
+                  {caption && (
+                    <figcaption className="px-4 py-2.5 text-xs text-[#4a4845] bg-[#f8f1e6]/60 border-t border-[#f2ebe0]">
+                      {caption}
+                    </figcaption>
+                  )}
+                </figure>
+              );
+            }
+            return null;
+          })
+        ) : (
+          <div className="rounded-2xl border border-[#000000]/8 bg-white shadow-sm p-4 prose prose-sm max-w-none">
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              rehypePlugins={[rehypeSanitize]}
+              components={markdownComponents}
+            >
+              {studyText}
+            </ReactMarkdown>
+          </div>
+        )}
       </div>
 
       {/* Lesson context */}
