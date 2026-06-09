@@ -190,7 +190,8 @@ const resolveTextVariant = (data: Record<string, unknown> | undefined) => {
           : null;
   const content = typeof data.content === "string" && data.content ? data.content : undefined;
   const markdown = typeof data.markdown === "string" && data.markdown ? data.markdown : undefined;
-  return (fromVariants ?? content ?? markdown ?? "").trim();
+  const text = typeof data.text === "string" && data.text ? data.text : undefined;
+  return (fromVariants ?? content ?? markdown ?? text ?? "").trim();
 };
 
 const parseCohortProjectPayload = (value: unknown): CohortProjectPayload | null => {
@@ -2996,6 +2997,7 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
     [handleSendChat, chatLoading],
   );
 
+
   const ttsMarkdownComponents = useMemo<Components>(
     () => ({
       ...studyMarkdownComponents,
@@ -3289,6 +3291,20 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
     });
     return () => window.cancelAnimationFrame(raf);
   }, [buildTtsSegments, activeLesson?.topicId, hasBlockLayout, formattedStudyText]);
+
+  // Re-build TTS segments when the widget study panel mounts/unmounts
+  // so highlighting works inside the full-screen widget overlay.
+  useEffect(() => {
+    const handleWidgetStudyMount = () => {
+      buildTtsSegments();
+    };
+    window.addEventListener("widget-study-mounted", handleWidgetStudyMount);
+    window.addEventListener("widget-study-unmounted", handleWidgetStudyMount);
+    return () => {
+      window.removeEventListener("widget-study-mounted", handleWidgetStudyMount);
+      window.removeEventListener("widget-study-unmounted", handleWidgetStudyMount);
+    };
+  }, [buildTtsSegments]);
 
   useEffect(() => {
     if (ttsStatus === "playing") {

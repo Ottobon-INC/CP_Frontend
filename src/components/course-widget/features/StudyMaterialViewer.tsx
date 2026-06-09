@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
@@ -60,7 +60,8 @@ const resolveTextVariant = (data: Record<string, unknown> | undefined) => {
           : null;
   const content = typeof data.content === "string" && data.content ? data.content : undefined;
   const markdown = typeof data.markdown === "string" && data.markdown ? data.markdown : undefined;
-  return (fromVariants ?? content ?? markdown ?? "").trim();
+  const text = typeof data.text === "string" && data.text ? data.text : undefined;
+  return (fromVariants ?? content ?? markdown ?? text ?? "").trim();
 };
 
 interface StudyMaterialViewerProps {
@@ -88,13 +89,34 @@ export default function StudyMaterialViewer({
       try {
         const parsed = JSON.parse(raw);
         if (parsed && typeof parsed === "object" && Array.isArray(parsed.blocks)) {
-          return parsed.blocks as any[];
+          const parsedBlocks = parsed.blocks as any[];
+          // Verify at least one text block has resolvable content
+          const hasResolvedText = parsedBlocks.some(
+            (b: any) => b.type === "text" && resolveTextVariant(b.data)
+          );
+          if (hasResolvedText || parsedBlocks.some((b: any) => b.type === "image")) {
+            return parsedBlocks;
+          }
+          // All text blocks resolved to empty — fall through to plain markdown rendering
+          return null;
         }
       } catch (e) {
         // Fall back to null
       }
     }
     return null;
+  }, [studyText]);
+
+  // Signal to CoursePlayerPage that widget study content is now mounted
+  // so it can re-build TTS segments from the newly-rendered DOM.
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      window.dispatchEvent(new CustomEvent("widget-study-mounted"));
+    }, 100);
+    return () => {
+      window.clearTimeout(timer);
+      window.dispatchEvent(new CustomEvent("widget-study-unmounted"));
+    };
   }, [studyText]);
 
   if (!studyText) {
