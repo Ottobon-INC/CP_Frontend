@@ -209,6 +209,25 @@ const parseCohortProjectPayload = (value: unknown): CohortProjectPayload | null 
 };
 
 type ContentType = "video" | "quiz";
+type TelemetryContentType =
+  | "article"
+  | "video"
+  | "reflection"
+  | "quiz"
+  | "discussion"
+  | "image"
+  | "diagram"
+  | "slide"
+  | "pdf"
+  | "code_block";
+
+const countWords = (value?: string | null) => {
+  if (!value) return 0;
+  return value
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean).length;
+};
 
 interface Lesson {
   topicId: string;
@@ -727,6 +746,10 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
   const [progress, setProgress] = useState(0);
   const [showNextOverlay, setShowNextOverlay] = useState(false);
   const [countdown, setCountdown] = useState(5);
+  const nativeVideoMetricsRef = useRef<{ videoDuration: number | null; currentPosition: number | null }>({
+    videoDuration: null,
+    currentPosition: null,
+  });
 
   // Widgets
   const [chatOpen, setChatOpen] = useState(false);
@@ -1054,6 +1077,135 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
     },
     [lessons, activeSlug, isModuleUnlocked],
   );
+  const activeStudyText = useMemo(() => activeLesson?.textContent ?? "", [activeLesson?.textContent]);
+  const formattedStudyText = useMemo(() => {
+    const normalized = normalizeStudyMarkdown(activeStudyText);
+    if (normalized) {
+      return normalized;
+    }
+    return normalizeStudyMarkdown(DEFAULT_STUDY_FALLBACK);
+  }, [activeStudyText]);
+  const contentBlocks = useMemo(() => parseContentBlocks(activeLesson?.textContent), [activeLesson?.textContent]);
+  const hasBlockLayout = Boolean(contentBlocks?.blocks?.length);
+  const firstBlockIsVideo = hasBlockLayout && contentBlocks?.blocks?.[0]?.type === "video";
+  const firstTextBlockIndex = useMemo(() => {
+    if (!contentBlocks?.blocks) return null;
+    const index = contentBlocks.blocks.findIndex((block) => block.type === "text");
+    return index >= 0 ? index : null;
+  }, [contentBlocks?.blocks]);
+  const hasStudyContent = hasBlockLayout ? Boolean(contentBlocks?.blocks?.length) : Boolean(formattedStudyText);
+  const activePptEmbedUrl = useMemo(() => buildOfficeViewerUrl(activeLesson?.pptUrl), [activeLesson?.pptUrl]);
+  const activeVideoUrl = activeLesson?.videoUrl ?? "";
+  const studyTelemetryText = useMemo(() => {
+    if (contentBlocks?.blocks?.length) {
+      return contentBlocks.blocks
+        .filter((block) => block.type === "text")
+        .map((block) => resolveTextVariant(block.data))
+        .filter(Boolean)
+        .join("\n\n");
+    }
+    return formattedStudyText;
+  }, [contentBlocks, formattedStudyText]);
+  const studyWordCount = useMemo(() => countWords(studyTelemetryText), [studyTelemetryText]);
+  const resolveTelemetryContentType = useCallback(
+    (eventType: string): TelemetryContentType | undefined => {
+      const normalized = eventType.toLowerCase();
+      if (normalized.startsWith("quiz.") || normalized === "lesson.quiz_select") {
+        return "quiz";
+      }
+      if (normalized.startsWith("cold_call.") || normalized.startsWith("tutor.")) {
+        return "discussion";
+      }
+      if (normalized.startsWith("notes.")) {
+        return "reflection";
+      }
+      if (normalized.startsWith("video.")) {
+        return "video";
+      }
+      if (isQuizMode) {
+        return "quiz";
+      }
+      if (isReadingMode && studyTelemetryText.trim()) {
+        return "article";
+      }
+      if (!isReadingMode && activeVideoUrl.trim()) {
+        return "video";
+      }
+      if (activePptEmbedUrl) {
+        return "slide";
+      }
+      if (contentBlocks?.blocks?.length) {
+        const firstBlock = contentBlocks.blocks[0];
+        if (firstBlock.type === "text") return "article";
+        if (firstBlock.type === "image") return "image";
+        if (firstBlock.type === "video") return "video";
+        if (firstBlock.type === "ppt") return "slide";
+        if (firstBlock.type === "quiz") return "quiz";
+      }
+      if (studyTelemetryText.trim()) {
+        return "article";
+      }
+      return undefined;
+    },
+    [activePptEmbedUrl, activeVideoUrl, contentBlocks, isQuizMode, isReadingMode, studyTelemetryText],
+  );
+  const buildTelemetryPayload = useCallback(
+    (eventType: string, payload?: Record<string, unknown>) => {
+      const nextPayload = { ...(payload ?? {}) };
+      const resolvedContentType =
+        typeof nextPayload.contentType === "string"
+          ? (nextPayload.contentType as TelemetryContentType)
+          : resolveTelemetryContentType(eventType);
+
+      if (typeof nextPayload.contentType !== "string" && resolvedContentType) {
+        nextPayload.contentType = resolvedContentType;
+      }
+
+      if (typeof nextPayload.tabVisible !== "boolean") {
+        nextPayload.tabVisible = typeof document !== "undefined" ? document.visibilityState === "visible" : true;
+      }
+
+      if (typeof nextPayload.windowFocused !== "boolean") {
+        nextPayload.windowFocused = typeof document !== "undefined" ? document.hasFocus() : true;
+      }
+
+      if (
+        (resolvedContentType === "video" || eventType.toLowerCase().startsWith("video.")) &&
+        nativeVideoMetricsRef.current.videoDuration !== null &&
+        typeof nextPayload.videoDuration !== "number"
+      ) {
+        nextPayload.videoDuration = nativeVideoMetricsRef.current.videoDuration;
+      }
+
+      if (
+        (resolvedContentType === "video" || eventType.toLowerCase().startsWith("video.")) &&
+        nativeVideoMetricsRef.current.currentPosition !== null &&
+        typeof nextPayload.currentPosition !== "number"
+      ) {
+        nextPayload.currentPosition = nativeVideoMetricsRef.current.currentPosition;
+      }
+
+      if (
+        resolvedContentType === "article" &&
+        studyWordCount > 0 &&
+        typeof nextPayload.wordCount !== "number"
+      ) {
+        nextPayload.wordCount = studyWordCount;
+      }
+
+      return nextPayload;
+    },
+    [resolveTelemetryContentType, studyWordCount],
+  );
+  const handleNativeVideoTelemetry = useCallback((event: React.SyntheticEvent<HTMLVideoElement>) => {
+    const node = event.currentTarget;
+    const duration = Number.isFinite(node.duration) ? node.duration : null;
+    const position = Number.isFinite(node.currentTime) ? node.currentTime : null;
+    nativeVideoMetricsRef.current = {
+      videoDuration: duration,
+      currentPosition: position,
+    };
+  }, []);
   const emitTelemetry = useCallback(
     (
       eventType: string,
@@ -1069,12 +1221,11 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
         moduleNo: context?.moduleNo ?? activeLesson?.moduleNo ?? null,
         topicId: context?.topicId ?? activeLesson?.topicId ?? null,
         eventType,
-        payload,
+        payload: buildTelemetryPayload(eventType, payload),
       });
     },
-    [activeLesson?.courseId, activeLesson?.moduleNo, activeLesson?.topicId, lessons],
+    [activeLesson?.courseId, activeLesson?.moduleNo, activeLesson?.topicId, buildTelemetryPayload, lessons],
   );
-  const activePptEmbedUrl = useMemo(() => buildOfficeViewerUrl(activeLesson?.pptUrl), [activeLesson?.pptUrl]);
   const currentModuleId = activeLesson?.moduleNo ?? modules[0]?.id ?? 1;
   const realModules = useMemo(() => modules.filter((m) => m.id > 0), [modules]);
   const currentModuleDisplay = useMemo(() => {
@@ -1816,6 +1967,13 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
     setInlineFollowUps({});
     void fetchPromptSuggestions();
   }, [fetchPromptSuggestions]);
+
+  useEffect(() => {
+    nativeVideoMetricsRef.current = {
+      videoDuration: null,
+      currentPosition: null,
+    };
+  }, [activeLesson?.topicId, activeVideoUrl]);
 
   useEffect(() => {
     if (!activeLesson?.topicId) {
@@ -2838,23 +2996,6 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
     [handleSendChat, chatLoading],
   );
 
-  const activeStudyText = useMemo(() => activeLesson?.textContent ?? "", [activeLesson?.textContent]);
-  const formattedStudyText = useMemo(() => {
-    const normalized = normalizeStudyMarkdown(activeStudyText);
-    if (normalized) {
-      return normalized;
-    }
-    return normalizeStudyMarkdown(DEFAULT_STUDY_FALLBACK);
-  }, [activeStudyText]);
-  const contentBlocks = useMemo(() => parseContentBlocks(activeLesson?.textContent), [activeLesson?.textContent]);
-  const hasBlockLayout = Boolean(contentBlocks?.blocks?.length);
-  const firstBlockIsVideo = hasBlockLayout && contentBlocks?.blocks?.[0]?.type === "video";
-  const firstTextBlockIndex = useMemo(() => {
-    if (!contentBlocks?.blocks) return null;
-    const index = contentBlocks.blocks.findIndex((block) => block.type === "text");
-    return index >= 0 ? index : null;
-  }, [contentBlocks?.blocks]);
-  const hasStudyContent = hasBlockLayout ? Boolean(contentBlocks?.blocks?.length) : Boolean(formattedStudyText);
   const ttsMarkdownComponents = useMemo<Components>(
     () => ({
       ...studyMarkdownComponents,
@@ -3334,15 +3475,19 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
                         allowFullScreen
                       />
                     ) : (
-                      <video
-                        className="w-full h-full block rounded-[inherit] overflow-hidden"
-                        controls
-                        playsInline
-                        preload="metadata"
-                        title={title}
-                      >
-                        <source src={videoUrl} />
-                      </video>
+                    <video
+                      className="w-full h-full block rounded-[inherit] overflow-hidden"
+                      controls
+                      playsInline
+                      preload="metadata"
+                      title={title}
+                      onLoadedMetadata={handleNativeVideoTelemetry}
+                      onDurationChange={handleNativeVideoTelemetry}
+                      onTimeUpdate={handleNativeVideoTelemetry}
+                      onSeeked={handleNativeVideoTelemetry}
+                    >
+                      <source src={videoUrl} />
+                    </video>
                     )}
                   </div>
                 </div>
@@ -3580,6 +3725,7 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
       activatedVideos,
       firstBlockIsVideo,
       firstTextBlockIndex,
+      handleNativeVideoTelemetry,
       inlineQuizStateByKey,
       isReadingMode,
       renderStudyHeader,
@@ -3588,7 +3734,6 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
       submitInlineQuiz,
     ],
   );
-  const activeVideoUrl = activeLesson?.videoUrl ?? "";
   const stageKey = isQuizMode
     ? `quiz:${selectedSection?.assessmentId ?? "none"}:${selectedSection?.moduleNo ?? "none"}:${selectedSection?.topicPairIndex ?? "none"}`
     : "lesson";
@@ -4089,6 +4234,10 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
                       playsInline
                       preload="metadata"
                       title={activeLesson?.topicName ?? "Lesson video"}
+                      onLoadedMetadata={handleNativeVideoTelemetry}
+                      onDurationChange={handleNativeVideoTelemetry}
+                      onTimeUpdate={handleNativeVideoTelemetry}
+                      onSeeked={handleNativeVideoTelemetry}
                     >
                       <source src={activeVideoUrl} />
                     </video>
