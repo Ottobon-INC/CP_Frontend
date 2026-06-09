@@ -649,8 +649,8 @@ const CourseDetailsPage = (props: any) => {
     const upcomingRegistration: any[] = [];
 
     for (const c of cohorts) {
-      const regStart = c.registrationStartsAt ? new Date(c.registrationStartsAt) : null;
-      const regEnd = c.registrationEndsAt ? new Date(c.registrationEndsAt) : null;
+      const regStart = c.registrationOpenAt ? new Date(c.registrationOpenAt) : null;
+      const regEnd = c.registrationCloseAt ? new Date(c.registrationCloseAt) : null;
 
       if (!regStart && !regEnd) {
         openForRegistration.push(c);
@@ -670,8 +670,8 @@ const CourseDetailsPage = (props: any) => {
     if (openForRegistration.length > 0) return { kind: "register_now" };
 
     if (upcomingRegistration.length > 0) {
-      upcomingRegistration.sort((a, b) => new Date(a.registrationStartsAt).getTime() - new Date(b.registrationStartsAt).getTime());
-      const dt = new Date(upcomingRegistration[0].registrationStartsAt);
+      upcomingRegistration.sort((a, b) => new Date(a.registrationOpenAt).getTime() - new Date(b.registrationOpenAt).getTime());
+      const dt = new Date(upcomingRegistration[0].registrationOpenAt);
       return { kind: "registration_upcoming", date: dt.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) };
     }
 
