@@ -111,7 +111,7 @@ export default function WidgetContentArea({
 
     return (
       <Suspense fallback={<PanelSkeleton />}>
-        <div className="p-6">
+        <div className="p-6 h-full flex flex-col min-h-0">
           <Component {...extraProps} />
         </div>
       </Suspense>
