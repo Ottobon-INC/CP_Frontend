@@ -4520,7 +4520,7 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
             }}
           >
             <div
-              className="p-3 bg-[#000000] flex justify-between items-center cursor-move select-none"
+              className="p-3 bg-[#bf2f1f] flex justify-between items-center cursor-move select-none"
               onMouseDown={(e) => handleMouseDown(e, "move", "chat")}
               onDoubleClick={() => {
                 if (!chatExpanded) {
