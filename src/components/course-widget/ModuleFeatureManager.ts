@@ -71,9 +71,9 @@ export function resolveModuleFeatures(
   const features: WidgetFeature[] = [
     {
       id: "study",
-      label: "Study",
+      label: "Analogy",
       icon: "BookOpen",
-      tooltip: "Study Material",
+      tooltip: "Analogy",
       available: hasText,
       order: 1,
     },
