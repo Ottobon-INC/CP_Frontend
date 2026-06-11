@@ -2881,7 +2881,7 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
           sessionId = typeof payload?.sessionId === "string" ? payload.sessionId : undefined;
           nextSuggestions = Array.isArray(payload?.nextSuggestions) ? payload.nextSuggestions : [];
 
-          if (suggestion && answer.trim().length > 0) {
+          if (answer.trim().length > 0) {
             const elapsedMs = Date.now() - requestStartedAt;
             const remainingWaitMs = Math.max(0, CHAT_SUGGESTION_MIN_WAIT_MS - elapsedMs);
             if (remainingWaitMs > 0) {
@@ -4520,7 +4520,7 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
             }}
           >
             <div
-              className="p-3 bg-[#000000] flex justify-between items-center cursor-move select-none"
+              className="p-3 bg-[#bf2f1f] flex justify-between items-center cursor-move select-none"
               onMouseDown={(e) => handleMouseDown(e, "move", "chat")}
               onDoubleClick={() => {
                 if (!chatExpanded) {

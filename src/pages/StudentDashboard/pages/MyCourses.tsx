@@ -28,12 +28,13 @@ export function MyCourses() {
     lastLessonSlug?: string | null;
     isEnrolled?: boolean;
     programType?: 'cohort' | 'ondemand' | 'workshop' | 'catalog';
+    isAccessible?: boolean;
   }) => {
     if (!course.courseSlug) {
       return null;
     }
     // Enrolled learners should jump directly into the player.
-    if (course.isEnrolled) {
+    if (course.isEnrolled && course.isAccessible !== false) {
       const safeLesson = (course.lastLessonSlug ?? '').trim() || 'start';
       if (course.programType === 'ondemand') {
         return `/ondemand/${course.courseSlug}/learn/${safeLesson}`;
@@ -65,7 +66,26 @@ export function MyCourses() {
       courseSlug: c.courseSlug,
       lastLessonSlug: c.lastLessonSlug,
       isEnrolled: true,
+      isAccessible: true,
       programType: 'cohort' as const,
+      status: c.status,
+    }));
+
+    const upcomingCohorts = (summary.upcomingCohorts || []).map(c => ({
+      id: c.id,
+      title: c.title,
+      desc: `Batch ${c.batchNo} • Starts ${c.nextSessionDate ?? 'soon'}`,
+      progress: c.progress,
+      lastAccess: c.nextSessionDate ? `Starts: ${c.nextSessionDate}` : 'Starts soon',
+      tag: `Upcoming Cohort (Batch ${c.batchNo})`,
+      icon: cohortIcon,
+      btnText: 'View Details',
+      courseSlug: c.courseSlug,
+      lastLessonSlug: c.lastLessonSlug,
+      isEnrolled: true,
+      isAccessible: false,
+      programType: 'cohort' as const,
+      status: c.status,
     }));
 
     const onDemand = summary.onDemand.map(od => ({
@@ -80,7 +100,9 @@ export function MyCourses() {
       courseSlug: od.courseSlug,
       lastLessonSlug: od.lastLessonSlug,
       isEnrolled: true,
+      isAccessible: true,
       programType: 'ondemand' as const,
+      status: 'Ongoing' as const,
     }));
 
     const workshops = summary.workshops.map(w => ({
@@ -95,7 +117,9 @@ export function MyCourses() {
       courseSlug: null,
       lastLessonSlug: null,
       isEnrolled: true,
+      isAccessible: false,
       programType: 'workshop' as const,
+      status: 'Ongoing' as const,
     }));
 
     const catalog = summary.catalog.map(c => ({
@@ -110,11 +134,13 @@ export function MyCourses() {
       courseSlug: c.courseSlug,
       lastLessonSlug: null,
       isEnrolled: false,
+      isAccessible: false,
       programType: 'catalog' as const,
+      status: 'Upcoming' as const,
     }));
 
     // Temporarily remove onDemand courses from the list
-    return [...cohorts, ...workshops];
+    return [...cohorts, ...upcomingCohorts, ...workshops];
   }, [summary]);
 
   // Helpers
@@ -122,7 +148,7 @@ export function MyCourses() {
   const isEnrolled = (c: any) => c.isEnrolled;
   const isNotEnrolled = (c: any) => !c.isEnrolled;
 
-  const { activeCourses, completedCourses } = useMemo(() => {
+  const { activeCourses, upcomingCourses, completedCourses } = useMemo(() => {
     const filtered = mappedCourses.filter(c => {
       // Search
       if (searchQuery && !c.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
@@ -140,8 +166,9 @@ export function MyCourses() {
     });
 
     return {
-      activeCourses: filtered.filter(c => c.progress < 100),
-      completedCourses: filtered.filter(c => c.progress === 100)
+      activeCourses: filtered.filter(c => c.status !== 'Upcoming' && c.progress < 100),
+      upcomingCourses: filtered.filter(c => c.status === 'Upcoming'),
+      completedCourses: filtered.filter(c => c.status !== 'Upcoming' && c.progress === 100)
     };
   }, [searchQuery, activeFilter, mappedCourses]);
 
@@ -200,7 +227,7 @@ export function MyCourses() {
               <p className="text-sm text-retro-teal/60 mt-1 font-medium">Manage and continue your learning</p>
             </div>
             <div className="bg-gray-200 text-retro-teal py-1 px-4 rounded-full text-xs md:text-sm font-bold">
-              {mappedCourses.length} Active Courses
+              {mappedCourses.length} Enrolled Courses
             </div>
           </div>
         </>
@@ -272,6 +299,43 @@ export function MyCourses() {
                 {activeCourses.length === 0 && !isLoading && (
                   <div className="col-span-2 py-8 px-4 text-center bg-white rounded-2xl border border-dashed border-border-soft">
                     <p className="text-retro-teal/60 font-medium text-sm">No active courses found in this category.</p>
+                  </div>
+                )}
+              </div>
+
+              <h3 className="text-lg font-bold text-retro-teal mb-5">Enrolled, Starts Soon</h3>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-12">
+                {upcomingCourses.map((course: any) => (
+                  <div key={course.id} className="bg-white rounded-2xl p-5 shadow-sm border border-retro-sage/20 flex flex-col">
+                    <p className="text-xs text-retro-salmon font-bold mb-2">
+                      {course.tag}
+                    </p>
+                    <h4 className="text-lg font-bold mb-2">{course.title}</h4>
+                    <p className="text-sm text-retro-teal/60 font-medium mb-4">{course.desc}</p>
+                    <div className="h-[120px] rounded-lg bg-retro-bg/30 mb-4 flex items-center justify-center">
+                      <i className="fas fa-calendar-alt text-retro-sage text-4xl"></i>
+                    </div>
+                    <div className="flex justify-between text-xs font-bold mb-2">
+                      <span>Access</span>
+                      <span>Starts Soon</span>
+                    </div>
+                    <p className="text-retro-salmon text-xs font-bold">
+                      {course.lastAccess}
+                    </p>
+                    <button
+                      onClick={() => {
+                        const target = resolveCourseTarget(course);
+                        if (target) setLocation(target);
+                      }}
+                      className="w-full mt-4 bg-white border border-retro-salmon text-retro-salmon py-2 rounded-lg font-bold hover:bg-retro-salmon hover:text-white transition-all shadow-sm"
+                    >
+                      {course.btnText}
+                    </button>
+                  </div>
+                ))}
+                {upcomingCourses.length === 0 && !isLoading && (
+                  <div className="col-span-2 py-8 px-4 text-center bg-white rounded-2xl border border-dashed border-border-soft">
+                    <p className="text-retro-teal/60 font-medium text-sm">No upcoming enrolled courses found.</p>
                   </div>
                 )}
               </div>

@@ -29,6 +29,17 @@ export type DashboardSummary = {
     nextSessionDate: string | null;
     batchNo: number;
   }>;
+  upcomingCohorts: Array<{
+    id: string;
+    title: string;
+    courseSlug: string | null;
+    lastLessonSlug: string | null;
+    lastAccessedModule: string;
+    status: "Upcoming" | "Ongoing" | "Completed";
+    progress: number;
+    nextSessionDate: string | null;
+    batchNo: number;
+  }>;
   onDemand: Array<{
     id: string;
     title: string;

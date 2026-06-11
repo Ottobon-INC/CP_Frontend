@@ -105,112 +105,103 @@ export default function AiTutorChat({
   ];
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-[#0f0f0f] text-[#f8f1e6]/80 overflow-hidden">
       {/* Messages */}
       <div
         ref={listRef}
-        className="flex-1 overflow-y-auto p-3 space-y-2.5 widget-scrollbar"
+        className="flex-1 overflow-y-auto p-4 space-y-4 widget-scrollbar"
       >
         {isHistoryLoading ? (
           <div className="flex justify-center p-4">
-            <div className="animate-spin rounded-full h-6 w-6 border-2 border-[#bf2f1f] border-t-transparent"></div>
+            <div className="animate-spin rounded-full h-6 w-6 border-2 border-[#ff5a3c] border-t-transparent"></div>
           </div>
         ) : (
           displayMessages.map((msg) => {
             const showThinking = msg.isBot && isLoading && !msg.error && msg.text.trim().length === 0;
-          const followUps = inlineFollowUps[msg.id] ?? [];
+            const followUps = inlineFollowUps[msg.id] ?? [];
 
-          return (
-            <div key={msg.id} className="space-y-1.5">
-              <div
-                className={`rounded-xl px-3 py-2 text-[13px] leading-relaxed transition-all
-                  ${msg.isBot
-                    ? "bg-white border border-[#e8e1d8] text-[#1f2937] shadow-sm"
-                    : "bg-[#bf2f1f]/10 border border-[#bf2f1f]/20 text-[#000000] ml-6"
-                  }
-                  ${msg.error ? "border-red-300 bg-red-50 text-red-700" : ""}
-                `}
-              >
-                <div className="flex items-center gap-1.5 mb-1">
-                  {msg.isBot ? (
-                    <Bot size={12} className="text-[#bf2f1f]" />
-                  ) : null}
-                  <span className="text-[9px] uppercase tracking-wider font-bold text-[#4a4845]/50">
+            return (
+              <div key={msg.id} className="space-y-2">
+                <div
+                  className={`p-3 rounded-xl ${
+                    msg.isBot 
+                      ? "bg-white/5 border border-white/10" 
+                      : "bg-[#bf2f1f]/20 border border-[#bf2f1f]/40"
+                  } ${msg.error ? "border-red-500/60 text-red-200" : ""}`}
+                >
+                  <div className="text-[11px] uppercase tracking-wide opacity-70 mb-1.5 font-semibold">
                     {msg.isBot ? "Tutor" : "You"}
-                  </span>
+                  </div>
+                  
+                  {showThinking ? (
+                    <div className="mt-1 rounded-lg border border-[#bf2f1f]/30 bg-gradient-to-br from-[#1a0b09] via-[#100809] to-[#070707] p-3 space-y-2.5">
+                      <div className="flex items-center gap-2 text-xs text-[#f8f1e6]/90 font-medium">
+                        <span className="relative flex h-3 w-3">
+                          <span className="absolute inline-flex h-full w-full rounded-full bg-[#ff5a3c]/50 animate-ping" />
+                          <span className="relative inline-flex h-3 w-3 rounded-full bg-[#ff5a3c]" />
+                        </span>
+                        <span>{loadingMessage}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="h-2 w-2 rounded-full bg-[#ff5a3c] animate-[pulse_1.1s_ease-in-out_infinite] [animation-delay:0ms] shadow-[0_0_8px_rgba(255,90,60,0.65)]" />
+                        <span className="h-2 w-2 rounded-full bg-[#ff5a3c] animate-[pulse_1.1s_ease-in-out_infinite] [animation-delay:140ms] shadow-[0_0_8px_rgba(255,90,60,0.65)]" />
+                        <span className="h-2 w-2 rounded-full bg-[#ff5a3c] animate-[pulse_1.1s_ease-in-out_infinite] [animation-delay:280ms] shadow-[0_0_8px_rgba(255,90,60,0.65)]" />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="whitespace-pre-line text-[13px] leading-relaxed text-[#f8f1e6]/90">
+                      {msg.text}
+                    </div>
+                  )}
                 </div>
 
-                {showThinking ? (
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-1.5 text-[11px] text-[#bf2f1f]">
-                      <span className="relative flex h-2 w-2">
-                        <span className="absolute inline-flex h-full w-full rounded-full bg-[#bf2f1f]/40 animate-ping" />
-                        <span className="relative inline-flex h-2 w-2 rounded-full bg-[#bf2f1f]" />
-                      </span>
-                      <span>{loadingMessage}</span>
+                {/* Follow-up / Starter suggestions inline */}
+                {(followUps.length > 0 || (msg.id === starterAnchorMessageId && starterSuggestions.length > 0)) && !isLoading && (
+                  <div className="pl-3 border-l border-white/10 ml-2 space-y-2 mt-2">
+                    <div className="text-[10px] uppercase tracking-wide text-[#f8f1e6]/60">
+                      {msg.id === starterAnchorMessageId ? "Curious about this topic? Choose one to get started." : "More to explore"}
                     </div>
-                    <div className="flex items-center gap-1">
-                      {[0, 140, 280, 420].map((delay) => (
-                        <span
-                          key={delay}
-                          className="h-1.5 w-1.5 rounded-full bg-[#bf2f1f]"
-                          style={{
-                            animation: `pulse 1.1s ease-in-out ${delay}ms infinite`,
-                          }}
-                        />
+                    <div className="flex flex-wrap gap-2">
+                      {(msg.id === starterAnchorMessageId ? starterSuggestions : followUps).map((s) => (
+                        <button
+                          key={s.id}
+                          type="button"
+                          onClick={() => handleSuggestionClick(s)}
+                          disabled={isLoading}
+                          className={`px-3 py-1.5 rounded-full text-xs border transition-all ${
+                            isLoading
+                              ? "opacity-40 cursor-not-allowed border-[#4a4845]/40 text-[#f8f1e6]/40"
+                              : "border-white/25 text-white/80 hover:border-white hover:text-white"
+                          }`}
+                        >
+                          {s.promptText}
+                        </button>
                       ))}
                     </div>
                   </div>
-                ) : (
-                  <div className="whitespace-pre-line">{msg.text}</div>
                 )}
               </div>
-
-              {/* Follow-up / Starter suggestions inline */}
-              {(followUps.length > 0 || (msg.id === starterAnchorMessageId && starterSuggestions.length > 0)) && !isLoading && (
-                <div className="pl-2 space-y-1.5 mt-2">
-                  <div className="flex items-center gap-1 text-[9px] uppercase tracking-wider text-[#4a4845]/50 font-semibold">
-                    <Sparkles size={10} />
-                    <span>{msg.id === starterAnchorMessageId ? "Suggested questions" : "More to explore"}</span>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {(msg.id === starterAnchorMessageId ? starterSuggestions : followUps).map((s) => (
-                      <button
-                        key={s.id}
-                        type="button"
-                        onClick={() => handleSuggestionClick(s)}
-                        disabled={isLoading}
-                        className="px-3 py-1.5 rounded-full text-[11px] font-medium border border-[#bf2f1f]/20 bg-white text-[#bf2f1f] hover:bg-[#bf2f1f] hover:text-white transition-all disabled:opacity-40 shadow-sm"
-                      >
-                        {s.promptText}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        }))}
+            );
+          })
+        )}
       </div>
-
-
 
       {/* Suggestion skeleton */}
       {suggestionsLoading && (
-        <div className="px-3 py-2 border-t border-[#e8e1d8]/60 space-y-1.5">
-          <div className="widget-skeleton h-6 w-48" />
-          <div className="widget-skeleton h-6 w-56" />
-          <div className="widget-skeleton h-6 w-40" />
+        <div className="p-3 bg-white/5 border-t border-[#4a4845]/30 space-y-2">
+          <div className="widget-skeleton h-6 w-48 bg-white/10" />
+          <div className="widget-skeleton h-6 w-56 bg-white/10" />
+          <div className="widget-skeleton h-6 w-40 bg-white/10" />
         </div>
       )}
 
       {/* Input */}
-      <div className="p-3 border-t border-[#e8e1d8]/60 bg-white/60 flex gap-2 items-center">
+      <div className="p-3 border-t border-[#bf2f1f]/20 bg-[#111] flex gap-2 items-center">
         <input
           ref={inputRef}
           type="text"
-          className="flex-1 bg-white border border-[#e8e1d8] rounded-xl px-3 py-2 text-[13px] text-[#000000] placeholder:text-[#4a4845]/40 focus:outline-none focus:border-[#bf2f1f] focus:ring-1 focus:ring-[#bf2f1f]/20 transition-all"
-          placeholder="Ask the AI Tutor..."
+          className="flex-1 bg-[#1a1a1a] border border-[#bf2f1f]/30 rounded-lg px-3 py-2 text-[13px] text-white focus:outline-none focus:border-[#bf2f1f] transition-colors"
+          placeholder="Ask AI..."
           value={currentInput}
           onChange={(e) => handleInputChange(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -220,9 +211,9 @@ export default function AiTutorChat({
           type="button"
           onClick={handleSend}
           disabled={isLoading || !currentInput.trim()}
-          className="p-2 rounded-xl bg-[#bf2f1f] text-white hover:bg-[#a62619] disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm"
+          className="p-2 disabled:opacity-40 hover:bg-[#bf2f1f]/10 rounded-lg transition-colors"
         >
-          <Send size={14} />
+          <Send size={16} className="text-[#bf2f1f]" />
         </button>
       </div>
     </div>

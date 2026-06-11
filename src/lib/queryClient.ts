@@ -1,6 +1,6 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 import { buildApiUrl } from "@/lib/api";
-import { ensureSessionFresh, readStoredSession } from "@/utils/session";
+import { ensureSessionFresh, markSessionExpired, readStoredSession } from "@/utils/session";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
@@ -28,6 +28,10 @@ export async function apiRequest(
     token = localStorage.getItem("token") || localStorage.getItem("jwt");
   }
 
+  if (!token && localStorage.getItem("isAuthenticated") === "true") {
+    markSessionExpired("missing_session");
+  }
+
   const isFormData = data instanceof FormData;
   const body = isFormData ? data : (data ? JSON.stringify(data) : undefined);
   const { headers: initHeaders, ...restInit } = init ?? {};
@@ -48,6 +52,10 @@ export async function apiRequest(
     ...restInit,
     headers: mergedHeaders,
   });
+
+  if (res.status === 401) {
+    markSessionExpired("unauthorized");
+  }
 
   await throwIfResNotOk(res);
   return res;
@@ -78,12 +86,20 @@ export const getQueryFn: <T>(options: {
       token = localStorage.getItem("token") || localStorage.getItem("jwt");
     }
 
+    if (!token && localStorage.getItem("isAuthenticated") === "true") {
+      markSessionExpired("missing_session");
+    }
+
     const res = await fetch(buildApiUrl(firstSegment), {
       credentials: "include",
       headers: {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
     });
+
+    if (res.status === 401) {
+      markSessionExpired("unauthorized");
+    }
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
       return null;
