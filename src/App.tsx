@@ -1,12 +1,23 @@
 import { Switch, Route, useLocation } from "wouter";
 import { buildApiUrl } from "@/lib/api";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import ScrollToTop from "@/components/layout/ScrollToTop";
-import { logoutAndRedirect, resetSessionHeartbeat, subscribeToSession, readStoredSession } from "@/utils/session";
+import {
+  clearPostLoginRedirect,
+  ensureSessionFresh,
+  readPostLoginRedirect,
+  readStoredSession,
+  resetSessionHeartbeat,
+  savePostLoginRedirect,
+  subscribeToSession,
+  subscribeToSessionExpired,
+  type SessionExpiredPayload,
+} from "@/utils/session";
+import { redirectToGoogleOAuth } from "@/utils/auth";
 import Navbar from "@/components/layout/Navbar";
 import NotFound from "@/pages/not-found";
 import AssessmentPage from "@/pages/AssessmentPage";
@@ -150,13 +161,25 @@ function Router() {
 
 function App({ isAuthenticated, user, setIsAuthenticated, setUser }: any) {
   const [location] = useLocation();
-  const hadSessionRef = useRef(false);
-  const logoutTriggeredRef = useRef(false);
+  const [sessionExpired, setSessionExpired] = useState<SessionExpiredPayload | null>(null);
   const shouldHideNavbar =
     location === "/course" ||
     location.startsWith("/course/") ||
     location.startsWith("/ondemand/") ||
     location.startsWith("/registration");
+
+  const isProtectedRoute =
+    location === "/student-dashboard" ||
+    location === "/student_dashboard" ||
+    location === "/my-courses" ||
+    location === "/live-sessions" ||
+    location === "/leaderboard" ||
+    location === "/assignments" ||
+    location === "/messages" ||
+    location === "/certificates" ||
+    location === "/profile" ||
+    location.startsWith("/course/") ||
+    location.startsWith("/ondemand/");
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -167,15 +190,15 @@ function App({ isAuthenticated, user, setIsAuthenticated, setUser }: any) {
 
     const unsubscribe = subscribeToSession((session) => {
       if (session?.accessToken) {
-        hadSessionRef.current = true;
-        logoutTriggeredRef.current = false;
+        clearPostLoginRedirect();
+        setSessionExpired(null);
         return;
       }
+    });
 
-      const storedAuth = window.localStorage.getItem("isAuthenticated") === "true";
-      if ((hadSessionRef.current || storedAuth) && !isAuthCallback() && !logoutTriggeredRef.current) {
-        logoutTriggeredRef.current = true;
-        logoutAndRedirect("/");
+    const unsubscribeExpired = subscribeToSessionExpired((payload) => {
+      if (!isAuthCallback()) {
+        setSessionExpired(payload);
       }
     });
 
@@ -196,10 +219,46 @@ function App({ isAuthenticated, user, setIsAuthenticated, setUser }: any) {
 
     return () => {
       unsubscribe();
+      unsubscribeExpired();
       window.removeEventListener("focus", handleFocus);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, []);
+
+  useEffect(() => {
+    if (!isProtectedRoute) {
+      return;
+    }
+
+    if (typeof window === "undefined" || window.location.pathname === "/auth/callback") {
+      return;
+    }
+
+    const storedAuth = window.localStorage.getItem("isAuthenticated") === "true";
+    if (!storedAuth) {
+      return;
+    }
+
+    let mounted = true;
+    void ensureSessionFresh(readStoredSession(), { notifyOnFailure: false }).then((session) => {
+      if (!mounted) {
+        return;
+      }
+      if (!session) {
+        const redirectPath = readPostLoginRedirect() ?? savePostLoginRedirect();
+        setSessionExpired({ reason: "refresh_failed", redirectPath });
+      }
+    });
+
+    return () => {
+      mounted = false;
+    };
+  }, [isProtectedRoute, location]);
+
+  const handleLoginAgain = () => {
+    const redirectPath = savePostLoginRedirect(sessionExpired?.redirectPath ?? location);
+    redirectToGoogleOAuth(redirectPath);
+  };
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -211,7 +270,7 @@ function App({ isAuthenticated, user, setIsAuthenticated, setUser }: any) {
             <Navbar
               onLogin={() => {
                 const homeRedirect = '/student-dashboard';
-                sessionStorage.setItem("postLoginRedirect", homeRedirect);
+                savePostLoginRedirect(homeRedirect);
                 // Use buildApiUrl to ensure we target the correct backend port (4000)
                 const target = `${buildApiUrl('/auth/google')}?redirect=${encodeURIComponent(homeRedirect)}`;
                 window.location.href = target;
@@ -230,6 +289,24 @@ function App({ isAuthenticated, user, setIsAuthenticated, setUser }: any) {
             />
           )}
           <Router />
+          {sessionExpired && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/55 px-4">
+              <div className="w-full max-w-md rounded-2xl border border-[#f3d3c2] bg-white p-6 shadow-2xl">
+                <h2 className="text-xl font-bold text-[#1f2937]">Session expired</h2>
+                <p className="mt-2 text-sm text-[#4b5563] leading-relaxed">
+                  Your session has expired. Sign in again to continue, and you will be returned to the same page.
+                </p>
+                <div className="mt-5 flex justify-end gap-3">
+                  <button
+                    onClick={handleLoginAgain}
+                    className="rounded-xl bg-[#E64833] px-4 py-2 text-sm font-bold text-white hover:brightness-110 transition"
+                  >
+                    Login again
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </TooltipProvider>
       </ThemeProvider>
     </QueryClientProvider>

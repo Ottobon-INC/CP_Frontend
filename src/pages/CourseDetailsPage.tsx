@@ -43,6 +43,7 @@ import {
 import logoImage from '@/logo.png';
 import { useLocation, useParams } from "wouter";
 import CertificateImage from "../Certificate.png";
+import { ensureSessionFresh, readStoredSession } from "@/utils/session";
 
 // --- INLINED UTILITIES ---
 
@@ -53,18 +54,6 @@ const API_BASE_URL = typeof window !== 'undefined' && (window.location.hostname 
 const buildApiUrl = (path: string) => {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
   return API_BASE_URL ? `${API_BASE_URL}${normalizedPath}` : normalizedPath;
-};
-
-const readStoredSession = () => {
-  try {
-    const raw = localStorage.getItem('session');
-    return raw ? JSON.parse(raw) : null;
-  } catch { return null; }
-};
-
-const ensureSessionFresh = async (session: any) => {
-  // Simple pass-through or refresh logic if needed
-  return session;
 };
 
 const toast = (props: { title?: string; description?: string; variant?: string; className?: string }) => {
