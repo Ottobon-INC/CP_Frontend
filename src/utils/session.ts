@@ -4,8 +4,16 @@ import type { StoredSession } from '@/types/session';
 const STORAGE_KEY = 'session';
 const USER_KEY = 'user';
 const AUTH_FLAG_KEY = 'isAuthenticated';
+const POST_LOGIN_REDIRECT_KEY = 'postLoginRedirect';
 const REFRESH_BUFFER_MS = 60_000;
 const MIN_REFRESH_DELAY_MS = 15_000;
+
+export type SessionExpiredReason = 'refresh_failed' | 'unauthorized' | 'missing_session';
+
+export type SessionExpiredPayload = {
+  reason: SessionExpiredReason;
+  redirectPath: string;
+};
 
 const parseTimestamp = (value: string | null | undefined): number | null => {
   if (!value) {
@@ -38,6 +46,30 @@ export const clearStoredSession = (): void => {
   localStorage.removeItem(STORAGE_KEY);
   localStorage.removeItem(USER_KEY);
   localStorage.setItem(AUTH_FLAG_KEY, 'false');
+};
+
+export const getCurrentAppPath = (): string => {
+  if (typeof window === 'undefined') {
+    return '/';
+  }
+
+  const path = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  return path.startsWith('/') ? path : `/${path}`;
+};
+
+export const savePostLoginRedirect = (path?: string | null): string => {
+  const redirectPath = path && path.startsWith('/') ? path : getCurrentAppPath();
+  sessionStorage.setItem(POST_LOGIN_REDIRECT_KEY, redirectPath);
+  return redirectPath;
+};
+
+export const readPostLoginRedirect = (): string | null => {
+  const stored = sessionStorage.getItem(POST_LOGIN_REDIRECT_KEY);
+  return stored && stored.startsWith('/') ? stored : null;
+};
+
+export const clearPostLoginRedirect = (): void => {
+  sessionStorage.removeItem(POST_LOGIN_REDIRECT_KEY);
 };
 
 export const shouldRefreshAccessToken = (session: StoredSession, bufferMs = REFRESH_BUFFER_MS): boolean => {
@@ -114,9 +146,10 @@ export const ensureSessionFresh = async (
 
   const refreshed = await requestSessionRefresh(session);
   if (!refreshed) {
-    clearStoredSession();
     if (options?.notifyOnFailure !== false) {
-      notifyListeners(null);
+      markSessionExpired('refresh_failed');
+    } else {
+      clearStoredSession();
       stopHeartbeat();
     }
   }
@@ -157,8 +190,10 @@ export const computeRefreshDelay = (session: StoredSession, bufferMs = REFRESH_B
 export const SESSION_REFRESH_BUFFER_MS = REFRESH_BUFFER_MS;
 
 type SessionListener = (session: StoredSession | null) => void;
+type SessionExpiredListener = (payload: SessionExpiredPayload) => void;
 
 const sessionListeners = new Set<SessionListener>();
+const sessionExpiredListeners = new Set<SessionExpiredListener>();
 let heartbeatTimer: ReturnType<typeof setTimeout> | null = null;
 let heartbeatActive = false;
 
@@ -180,22 +215,41 @@ const stopHeartbeat = () => {
   heartbeatActive = false;
 };
 
+const notifySessionExpired = (payload: SessionExpiredPayload) => {
+  sessionExpiredListeners.forEach((listener) => {
+    try {
+      listener(payload);
+    } catch (error) {
+      console.error('Session expired listener threw', error);
+    }
+  });
+};
+
+export const markSessionExpired = (
+  reason: SessionExpiredReason,
+  redirectPath?: string | null,
+): SessionExpiredPayload => {
+  const nextRedirectPath = savePostLoginRedirect(redirectPath);
+  clearStoredSession();
+  notifyListeners(null);
+  stopHeartbeat();
+  const payload = { reason, redirectPath: nextRedirectPath };
+  notifySessionExpired(payload);
+  return payload;
+};
+
 const heartbeatTick = async () => {
   heartbeatTimer = null;
 
   const stored = readStoredSession();
   if (!stored) {
-    clearStoredSession();
-    notifyListeners(null);
-    stopHeartbeat();
+    markSessionExpired('missing_session');
     return;
   }
 
   const refreshed = await ensureSessionFresh(stored, { notifyOnFailure: false });
   if (!refreshed) {
-    clearStoredSession();
-    notifyListeners(null);
-    stopHeartbeat();
+    markSessionExpired('refresh_failed');
     return;
   }
 
@@ -231,9 +285,7 @@ const bootstrapHeartbeat = async () => {
 
   const activeSession = await ensureSessionFresh(stored, { notifyOnFailure: false });
   if (!activeSession) {
-    clearStoredSession();
-    notifyListeners(null);
-    stopHeartbeat();
+    markSessionExpired('refresh_failed');
     return;
   }
 
@@ -261,5 +313,12 @@ export const subscribeToSession = (listener: SessionListener): (() => void) => {
     if (sessionListeners.size === 0) {
       stopHeartbeat();
     }
+  };
+};
+
+export const subscribeToSessionExpired = (listener: SessionExpiredListener): (() => void) => {
+  sessionExpiredListeners.add(listener);
+  return () => {
+    sessionExpiredListeners.delete(listener);
   };
 };
