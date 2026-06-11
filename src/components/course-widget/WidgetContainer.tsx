@@ -8,6 +8,7 @@ import "./widget.css";
 interface WidgetContainerProps {
   chatProps?: Record<string, unknown> | null;
   studyProps?: Record<string, unknown> | null;
+  analogyProps?: Record<string, unknown> | null;
   ttsProps?: Record<string, unknown> | null;
   quizProps?: Record<string, unknown> | null;
   coldCallingProps?: Record<string, unknown> | null;
@@ -17,6 +18,7 @@ interface WidgetContainerProps {
 export default function WidgetContainer({
   chatProps,
   studyProps,
+  analogyProps,
   ttsProps,
   quizProps,
   coldCallingProps,
@@ -51,6 +53,7 @@ export default function WidgetContainer({
               <WidgetContentArea
                 chatProps={chatProps}
                 studyProps={studyProps}
+                analogyProps={analogyProps}
                 ttsProps={ttsProps}
                 quizProps={quizProps}
                 coldCallingProps={coldCallingProps}

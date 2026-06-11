@@ -41,6 +41,7 @@ type ColdCallingProps = {
   topicId?: string | null;
   session: StoredSession | null;
   onTelemetryEvent?: (eventType: string, payload?: Record<string, unknown>) => void;
+  onComplete?: () => void;
 };
 
 const formatRelativeTime = (timestamp: string): string => {
@@ -75,7 +76,7 @@ const getInitials = (fullName: string): string => {
   return `${first}${last}`.toUpperCase();
 };
 
-export default function ColdCalling({ topicId, session, onTelemetryEvent }: ColdCallingProps) {
+export default function ColdCalling({ topicId, session, onTelemetryEvent, onComplete }: ColdCallingProps) {
   const { toast } = useToast();
   const [prompt, setPrompt] = useState<ColdCallPrompt | null>(null);
   const [messages, setMessages] = useState<ColdCallMessage[]>([]);
@@ -148,6 +149,9 @@ export default function ColdCalling({ topicId, session, onTelemetryEvent }: Cold
       }
       setPrompt(payload.prompt);
       setHasSubmitted(payload.hasSubmitted);
+      if (payload.hasSubmitted) {
+        onComplete?.();
+      }
       setMessages(payload.messages ?? []);
       emitTelemetry("cold_call.loaded", { promptId: payload.prompt.promptId, hasSubmitted: payload.hasSubmitted });
     } catch (error) {
@@ -240,6 +244,7 @@ export default function ColdCalling({ topicId, session, onTelemetryEvent }: Cold
 
       setResponseText("");
       await loadPrompt();
+      onComplete?.();
       emitTelemetry("cold_call.submit", { promptId: prompt.promptId, length: trimmedResponse.length });
     } catch (error) {
       toast({

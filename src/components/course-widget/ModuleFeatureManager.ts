@@ -20,7 +20,12 @@ export type WidgetFeatureId =
   | "progress"
   | "course-videos"
   | "simulation"
-  | "cold-calling";
+  | "cold-calling"
+  | "tbq"
+  | "collab"
+  | "assignment"
+  | "chat"
+  | "analogy";
 
 export interface WidgetFeature {
   id: WidgetFeatureId;
@@ -46,6 +51,14 @@ export interface LessonFeatureInput {
   hasQuizBlocks?: boolean;
   /** Whether the lesson has a simulation */
   hasSimulation?: boolean;
+  /** Whether the lesson has a cold calling prompt */
+  hasColdCalling?: boolean;
+  /** Whether the lesson has a slides block */
+  hasSlidesBlocks?: boolean;
+  /** Whether the lesson has text/image blocks for study mode */
+  hasStudyBlocks?: boolean;
+  /** Whether the lesson has analogy blocks */
+  hasAnalogyBlocks?: boolean;
 }
 
 const ALWAYS_AVAILABLE_FEATURES: WidgetFeatureId[] = [
@@ -62,20 +75,31 @@ export function resolveModuleFeatures(
 ): WidgetFeature[] {
   const hasVideo = Boolean(lesson?.videoUrl?.trim());
   const hasCourseVideos = allLessons.some((l) => Boolean(l.videoUrl?.trim()));
-  const hasText = Boolean(lesson?.textContent?.trim());
-  const hasPpt = Boolean(lesson?.pptUrl?.trim());
+  const hasText = lesson?.hasContentBlocks 
+    ? Boolean(lesson.hasStudyBlocks)
+    : Boolean(lesson?.textContent?.trim());
+  const hasPpt = Boolean(lesson?.pptUrl?.trim()) || Boolean(lesson?.hasSlidesBlocks);
   const hasQuiz = Boolean(lesson?.hasQuizBlocks);
   const hasSimulation = Boolean(lesson?.hasSimulation);
-  const hasColdCalling = Boolean(lesson?.topicId);
+  const hasColdCalling = Boolean(lesson?.hasColdCalling);
+  const hasAnalogy = Boolean(lesson?.hasAnalogyBlocks);
 
   const features: WidgetFeature[] = [
     {
       id: "study",
-      label: "Analogy",
+      label: "Study Material",
       icon: "BookOpen",
-      tooltip: "Analogy",
+      tooltip: "Study Material",
       available: hasText,
       order: 1,
+    },
+    {
+      id: "analogy",
+      label: "Analogy",
+      icon: "Lightbulb",
+      tooltip: "Analogy",
+      available: hasAnalogy,
+      order: 1.5,
     },
     {
       id: "notes",
@@ -122,7 +146,7 @@ export function resolveModuleFeatures(
       label: "Videos",
       icon: "MonitorPlay",
       tooltip: "Course Video Gallery",
-      available: true,
+      available: false,
       order: 7.5,
     },
     {
@@ -172,6 +196,38 @@ export function resolveModuleFeatures(
       tooltip: "Course Progress",
       available: false,
       order: 11,
+    },
+    {
+      id: "tbq",
+      label: "TBQ",
+      icon: "Clock",
+      tooltip: "Time-Bounded Questions",
+      available: false, // hidden per user request
+      order: 14,
+    },
+    {
+      id: "collab",
+      label: "Collab",
+      icon: "Users",
+      tooltip: "Collaboration",
+      available: false, // hidden per user request
+      order: 15,
+    },
+    {
+      id: "assignment",
+      label: "Assignments",
+      icon: "ClipboardCheck",
+      tooltip: "Assignments",
+      available: false, // hidden per user request
+      order: 16,
+    },
+    {
+      id: "chat",
+      label: "AI Tutor",
+      icon: "MessageSquare",
+      tooltip: "AI Tutor",
+      available: true,
+      order: 99,
     },
   ];
 

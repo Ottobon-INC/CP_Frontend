@@ -8,12 +8,18 @@ import {
 
 /* ─────────────── Types ─────────────── */
 
+export interface WidgetVideo {
+  url: string;
+  title?: string;
+}
+
 export interface WidgetLesson {
   topicId: string;
   courseId: string;
   moduleNo: number;
   topicName: string;
   videoUrl?: string | null;
+  videos?: WidgetVideo[];
   textContent?: string | null;
   pptUrl?: string | null;
   slug: string;
@@ -69,6 +75,14 @@ interface WidgetContextValue {
   courseKey: string | null;
   courseProgress: number;
   courseTitle: string;
+
+  /* ── Completion Tracking ── */
+  completedFeatures: WidgetFeatureId[];
+  markFeatureComplete: (id: WidgetFeatureId) => void;
+
+  /* ── Chat State ── */
+  chatOpen?: boolean;
+  setChatOpen?: (open: boolean) => void;
 }
 
 const WidgetCtx = createContext<WidgetContextValue | null>(null);
@@ -139,6 +153,48 @@ export function WidgetProvider({
     }
   }, [features, activeTab]);
 
+  // Completion Tracking logic backed by localStorage
+  const storageKey = `widget-completed-v2-${courseKey ?? "unknown"}-${activeLesson?.topicId ?? "unknown"}`;
+  const [completedFeatures, setCompletedFeatures] = useState<WidgetFeatureId[]>(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem(storageKey);
+      if (stored) {
+        try {
+          return JSON.parse(stored) as WidgetFeatureId[];
+        } catch (e) {
+          // Ignore
+        }
+      }
+    }
+    return [];
+  });
+
+  useEffect(() => {
+    setCompletedFeatures(() => {
+      const stored = localStorage.getItem(storageKey);
+      if (stored) {
+        try {
+          return JSON.parse(stored) as WidgetFeatureId[];
+        } catch (e) {
+          return [];
+        }
+      }
+      return [];
+    });
+  }, [storageKey]);
+
+  const markFeatureComplete = useCallback(
+    (id: WidgetFeatureId) => {
+      setCompletedFeatures((prev) => {
+        if (prev.includes(id)) return prev;
+        const next = [...prev, id];
+        localStorage.setItem(storageKey, JSON.stringify(next));
+        return next;
+      });
+    },
+    [storageKey]
+  );
+
   const toggleWidget = useCallback(() => {
     setIsExpanded((prev) => {
       if (prev) {
@@ -164,9 +220,10 @@ export function WidgetProvider({
       const targetTab = tab ?? features[0]?.id ?? null;
       setActiveTab(targetTab);
       setIsExpanded(true);
+      setChatOpen?.(false);
       if (viewport === "mobile") setMobileDrawerOpen(true);
     },
-    [features, viewport]
+    [features, viewport, setChatOpen]
   );
 
   const closeWidget = useCallback(() => {
@@ -181,12 +238,15 @@ export function WidgetProvider({
         setIsExpanded(true);
         if (viewport === "mobile") setMobileDrawerOpen(true);
       }
+      if (tab) {
+        setChatOpen?.(false);
+      }
       if (!tab) {
         setIsExpanded(false);
         if (viewport === "mobile") setMobileDrawerOpen(false);
       }
     },
-    [isExpanded, viewport]
+    [isExpanded, viewport, setChatOpen]
   );
 
   const value = useMemo<WidgetContextValue>(
@@ -211,6 +271,10 @@ export function WidgetProvider({
       courseKey,
       courseProgress,
       courseTitle,
+      completedFeatures,
+      markFeatureComplete,
+      chatOpen,
+      setChatOpen,
     }),
     [
       activeTab,
@@ -231,6 +295,10 @@ export function WidgetProvider({
       courseKey,
       courseProgress,
       courseTitle,
+      completedFeatures,
+      markFeatureComplete,
+      chatOpen,
+      setChatOpen,
     ]
   );
 

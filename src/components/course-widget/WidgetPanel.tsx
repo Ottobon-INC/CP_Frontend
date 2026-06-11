@@ -63,7 +63,7 @@ export default function WidgetPanel({ children }: WidgetPanelProps) {
       {/* Panel content area */}
       <div
         key={activeTab ?? "empty"}
-        className="flex-1 flex flex-col min-h-0 overflow-y-auto widget-scrollbar widget-content-enter relative"
+        className="flex-1 flex flex-col min-h-0 overflow-hidden widget-content-enter relative"
       >
         {children}
       </div>

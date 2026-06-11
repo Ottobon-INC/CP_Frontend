@@ -754,6 +754,7 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
 
   // Widgets
   const [chatOpen, setChatOpen] = useState(false);
+  const [hasColdCalling, setHasColdCalling] = useState(false);
   const [chatRect, setChatRect] = useState({
     x: 0,
     y: 0,
@@ -1087,14 +1088,159 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
     return normalizeStudyMarkdown(DEFAULT_STUDY_FALLBACK);
   }, [activeStudyText]);
   const contentBlocks = useMemo(() => parseContentBlocks(activeLesson?.textContent), [activeLesson?.textContent]);
-  const hasBlockLayout = Boolean(contentBlocks?.blocks?.length);
+  const hasBlockLayout = contentBlocks !== null;
+
+  const partitionedBlocks = useMemo(() => {
+    if (!contentBlocks?.blocks) return { studyBlocks: [], analogyBlocks: [] };
+    const studyBlocks: ContentBlock[] = [];
+    const analogyBlocks: ContentBlock[] = [];
+    let currentTarget: "study" | "analogy" = "study";
+    let analogyHeadingLevel: number | null = null;
+
+    for (const block of contentBlocks.blocks) {
+      if (block.type === "text") {
+        const textContent = resolveTextVariant(block.data);
+        if (!textContent) {
+          if (currentTarget === "study") {
+            studyBlocks.push(block);
+          } else {
+            analogyBlocks.push(block);
+          }
+          continue;
+        }
+
+        const lines = textContent.split(/\r?\n/);
+        let studyLines: string[] = [];
+        let analogyLines: string[] = [];
+
+        for (const line of lines) {
+          const headingMatch = line.match(/^(#{1,6})\s+(.*)$/);
+          if (headingMatch) {
+            const level = headingMatch[1].length;
+            const headingText = headingMatch[2];
+
+            if (analogyHeadingLevel !== null) {
+              if (level <= analogyHeadingLevel) {
+                if (/analogy/i.test(headingText)) {
+                  currentTarget = "analogy";
+                  analogyHeadingLevel = level;
+                } else {
+                  currentTarget = "study";
+                  analogyHeadingLevel = null;
+                }
+              }
+            } else {
+              if (/analogy/i.test(headingText)) {
+                currentTarget = "analogy";
+                analogyHeadingLevel = level;
+              }
+            }
+          }
+          if (currentTarget === "study") {
+            studyLines.push(line);
+          } else {
+            analogyLines.push(line);
+          }
+        }
+
+        if (studyLines.length > 0) {
+          const textVal = studyLines.join("\n").trim();
+          if (textVal) {
+            studyBlocks.push({
+              ...block,
+              id: block.id ? `${block.id}-study` : undefined,
+              data: {
+                ...block.data,
+                content: textVal,
+                markdown: textVal,
+                text: textVal,
+                variants: { default: textVal }
+              }
+            });
+          }
+        }
+
+        if (analogyLines.length > 0) {
+          const textVal = analogyLines.join("\n").trim();
+          if (textVal) {
+            analogyBlocks.push({
+              ...block,
+              id: block.id ? `${block.id}-analogy` : undefined,
+              data: {
+                ...block.data,
+                content: textVal,
+                markdown: textVal,
+                text: textVal,
+                variants: { default: textVal }
+              }
+            });
+          }
+        }
+      } else {
+        if (currentTarget === "study") {
+          studyBlocks.push(block);
+        } else {
+          analogyBlocks.push(block);
+        }
+      }
+    }
+
+    return { studyBlocks, analogyBlocks };
+  }, [contentBlocks]);
+
+  const partitionedMarkdown = useMemo(() => {
+    if (hasBlockLayout) return null;
+    const lines = formattedStudyText.split(/\r?\n/);
+    const studyLines: string[] = [];
+    const analogyLines: string[] = [];
+    let currentTarget: "study" | "analogy" = "study";
+    let analogyHeadingLevel: number | null = null;
+
+    for (const line of lines) {
+      const headingMatch = line.match(/^(#{1,6})\s+(.*)$/);
+      if (headingMatch) {
+        const level = headingMatch[1].length;
+        const headingText = headingMatch[2];
+
+        if (analogyHeadingLevel !== null) {
+          if (level <= analogyHeadingLevel) {
+            if (/analogy/i.test(headingText)) {
+              currentTarget = "analogy";
+              analogyHeadingLevel = level;
+            } else {
+              currentTarget = "study";
+              analogyHeadingLevel = null;
+            }
+          }
+        } else {
+          if (/analogy/i.test(headingText)) {
+            currentTarget = "analogy";
+            analogyHeadingLevel = level;
+          }
+        }
+      }
+      if (currentTarget === "study") {
+        studyLines.push(line);
+      } else {
+        analogyLines.push(line);
+      }
+    }
+
+    return {
+      studyMarkdown: studyLines.join("\n").trim(),
+      analogyMarkdown: analogyLines.join("\n").trim(),
+    };
+  }, [formattedStudyText, hasBlockLayout]);
+
   const firstBlockIsVideo = hasBlockLayout && contentBlocks?.blocks?.[0]?.type === "video";
   const firstTextBlockIndex = useMemo(() => {
     if (!contentBlocks?.blocks) return null;
     const index = contentBlocks.blocks.findIndex((block) => block.type === "text");
     return index >= 0 ? index : null;
   }, [contentBlocks?.blocks]);
-  const hasStudyContent = hasBlockLayout ? Boolean(contentBlocks?.blocks?.length) : Boolean(formattedStudyText);
+  const hasStudyContent = hasBlockLayout
+    ? Boolean(partitionedBlocks.studyBlocks.length)
+    : Boolean(partitionedMarkdown?.studyMarkdown);
   const activePptEmbedUrl = useMemo(() => buildOfficeViewerUrl(activeLesson?.pptUrl), [activeLesson?.pptUrl]);
   const activeVideoUrl = activeLesson?.videoUrl ?? "";
   const studyTelemetryText = useMemo(() => {
@@ -1821,6 +1967,30 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
   }, [fetchSections]);
 
   useEffect(() => {
+    if (!activeLesson?.topicId || !session?.accessToken) {
+      setHasColdCalling(false);
+      return;
+    }
+    let active = true;
+    fetch(buildApiUrl(`/api/cold-call/prompts/${activeLesson.topicId}`), {
+      headers: { Authorization: `Bearer ${session.accessToken}` },
+    })
+      .then((res) => {
+        if (active) {
+          setHasColdCalling(res.status === 200);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setHasColdCalling(false);
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [activeLesson?.topicId, session?.accessToken]);
+
+  useEffect(() => {
     void fetchModuleProgress();
   }, [fetchModuleProgress, learnerAssignmentsQuery.dataUpdatedAt]);
 
@@ -2111,7 +2281,14 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
   useLayoutEffect(() => {
     if (studyWidgetOpen && !studyWidgetRect.initialized) centerWidget("study");
   }, [studyWidgetOpen, studyWidgetRect.initialized]);
-  // Chat rect is now set eagerly in the toggle handler, no useLayoutEffect needed.
+  
+  // Chat rect must be initialized when opened from the dock
+  useLayoutEffect(() => {
+    if (chatOpen && !chatRect.initialized) {
+      setChatRect(getChatPresetRect(chatExpanded));
+    }
+  }, [chatOpen, chatRect.initialized, chatExpanded]);
+
   useLayoutEffect(() => {
     if (notesOpen && !notesRect.initialized) centerWidget("notes");
   }, [notesOpen, notesRect.initialized]);
@@ -3797,32 +3974,38 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
   const sidebarHeaderTitle = courseTitle || formatCourseKeyLabel(courseKey);
 
   /* ── Widget system data ── */
-  const widgetLesson = useMemo<WidgetLesson | null>(() => {
-    if (!activeLesson) return null;
-    return {
-      topicId: activeLesson.topicId,
-      courseId: activeLesson.courseId,
-      moduleNo: activeLesson.moduleNo,
-      topicName: activeLesson.topicName,
-      videoUrl: activeLesson.videoUrl,
-      textContent: activeLesson.textContent,
-      pptUrl: activeLesson.pptUrl,
-      slug: activeLesson.slug,
-      simulation: activeLesson.simulation,
-    };
-  }, [activeLesson]);
-
   const widgetAllLessons = useMemo<WidgetLesson[]>(() => {
     return lessons.map(l => {
       let resolvedVideoUrl = l.videoUrl;
-      if (!resolvedVideoUrl?.trim() && l.textContent) {
+      const resolvedVideos: { url: string; title?: string }[] = [];
+      if (resolvedVideoUrl?.trim()) {
+        resolvedVideos.push({
+          url: resolvedVideoUrl.trim(),
+          title: l.topicName,
+        });
+      }
+      if (l.textContent) {
         const blocksPayload = parseContentBlocks(l.textContent);
         if (blocksPayload?.blocks) {
-          const videoBlock = blocksPayload.blocks.find(b => b.type === "video");
-          if (videoBlock?.data && typeof videoBlock.data.url === "string") {
-            resolvedVideoUrl = videoBlock.data.url;
-          }
+          const videoBlocks = blocksPayload.blocks.filter(b => b.type === "video");
+          videoBlocks.forEach(videoBlock => {
+            if (videoBlock?.data && typeof videoBlock.data.url === "string" && videoBlock.data.url.trim()) {
+              const url = videoBlock.data.url.trim();
+              const blockTitle = typeof videoBlock.data.title === "string" && videoBlock.data.title.trim()
+                ? videoBlock.data.title.trim()
+                : undefined;
+              if (!resolvedVideos.some(v => v.url === url)) {
+                resolvedVideos.push({
+                  url,
+                  title: blockTitle,
+                });
+              }
+            }
+          });
         }
+      }
+      if (resolvedVideos.length > 0 && !resolvedVideoUrl) {
+        resolvedVideoUrl = resolvedVideos[0].url;
       }
       const navNode = modules
         .flatMap((module) => module.submodules)
@@ -3835,6 +4018,7 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
         moduleNo: l.moduleNo,
         topicName: l.topicName,
         videoUrl: resolvedVideoUrl,
+        videos: resolvedVideos,
         textContent: l.textContent,
         pptUrl: l.pptUrl,
         slug: l.slug,
@@ -3843,6 +4027,26 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
       };
     });
   }, [lessons, modules]);
+
+  const widgetLesson = useMemo<WidgetLesson | null>(() => {
+    if (!activeLesson) return null;
+    const found = widgetAllLessons.find(l => l.topicId === activeLesson.topicId);
+    console.log("DEBUG_MULTIVIDEO: activeTopicName:", activeLesson.topicName, "found in widgetAllLessons:", found ? "YES" : "NO");
+    if (found) {
+      console.log("DEBUG_MULTIVIDEO: resolved videos list:", found.videos);
+    }
+    return found ?? {
+      topicId: activeLesson.topicId,
+      courseId: activeLesson.courseId,
+      moduleNo: activeLesson.moduleNo,
+      topicName: activeLesson.topicName,
+      videoUrl: activeLesson.videoUrl,
+      textContent: activeLesson.textContent,
+      pptUrl: activeLesson.pptUrl,
+      slug: activeLesson.slug,
+      simulation: activeLesson.simulation,
+    };
+  }, [activeLesson, widgetAllLessons]);
 
   const widgetModules = useMemo<WidgetModule[]>(() =>
     modules.filter(m => m.id > 0).map(m => ({
@@ -3867,17 +4071,28 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
   );
 
   const widgetFeatureInput = useMemo<LessonFeatureInput | null>(() => {
-    if (!activeLesson) return null;
+    if (!widgetLesson) return null;
+    const hasStudy = hasBlockLayout
+      ? partitionedBlocks.studyBlocks.some((b: any) => b.type === "text" || b.type === "image")
+      : Boolean(partitionedMarkdown?.studyMarkdown);
+    const hasAnalogy = hasBlockLayout
+      ? partitionedBlocks.analogyBlocks.some((b: any) => b.type === "text" || b.type === "image")
+      : Boolean(partitionedMarkdown?.analogyMarkdown);
+
     return {
-      topicId: activeLesson.topicId,
-      videoUrl: activeLesson.videoUrl,
-      textContent: activeLesson.textContent,
-      pptUrl: activeLesson.pptUrl,
+      topicId: widgetLesson.topicId,
+      videoUrl: widgetLesson.videoUrl,
+      textContent: widgetLesson.textContent,
+      pptUrl: widgetLesson.pptUrl,
       hasContentBlocks: hasBlockLayout,
       hasQuizBlocks: contentBlocks?.blocks?.some(b => b.type === "quiz") ?? false,
-      hasSimulation: Boolean(activeLesson.simulation),
+      hasSimulation: Boolean(widgetLesson.simulation),
+      hasColdCalling,
+      hasSlidesBlocks: contentBlocks?.blocks?.some((b: any) => b.type === "ppt") ?? false,
+      hasStudyBlocks: hasStudy,
+      hasAnalogyBlocks: hasAnalogy,
     };
-  }, [activeLesson, hasBlockLayout, contentBlocks]);
+  }, [widgetLesson, hasBlockLayout, contentBlocks, hasColdCalling, partitionedBlocks, partitionedMarkdown]);
 
   const widgetChatProps = useMemo(() => ({
     messages: chatMessages,
@@ -3894,13 +4109,24 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
   }), [chatMessages, chatInput, handleSendChat, chatLoading, chatLoadingMessage, visibleStarterSuggestions, starterAnchorMessageId, suggestionsLoading, inlineFollowUps, chatHistoryLoading]);
 
   const widgetStudyProps = useMemo(() => ({
-    formattedStudyText,
-  }), [formattedStudyText]);
+    formattedStudyText: hasBlockLayout
+      ? JSON.stringify({ blocks: partitionedBlocks.studyBlocks })
+      : partitionedMarkdown?.studyMarkdown || "",
+  }), [hasBlockLayout, partitionedBlocks.studyBlocks, partitionedMarkdown?.studyMarkdown]);
+
+  const widgetAnalogyProps = useMemo(() => ({
+    formattedStudyText: hasBlockLayout
+      ? JSON.stringify({ blocks: partitionedBlocks.analogyBlocks })
+      : partitionedMarkdown?.analogyMarkdown || "",
+  }), [hasBlockLayout, partitionedBlocks.analogyBlocks, partitionedMarkdown?.analogyMarkdown]);
 
   const widgetTtsProps = useMemo(() => ({
     onToggleTts: toggleTts,
     ttsStatus,
-  }), [toggleTts, ttsStatus]);
+    formattedStudyText: hasBlockLayout
+      ? JSON.stringify({ blocks: contentBlocks?.blocks || [] })
+      : formattedStudyText,
+  }), [toggleTts, ttsStatus, hasBlockLayout, contentBlocks, formattedStudyText]);
 
   const widgetColdCallingProps = useMemo(() => ({
     topicId: activeLesson?.topicId,
@@ -4274,26 +4500,13 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
                 {!hasBlockLayout && renderStudyHeader()}
 
                 <div id="main-study-content" className="space-y-4 text-left" ref={studyContentRef}>
-                  {hasStudyContent && (
-                    <div className="sticky top-24 z-10 flex justify-end">
-                      <button
-                        type="button"
-                        onClick={toggleTts}
-                        disabled={!ttsText || ttsStatus === "unavailable"}
-                        className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] shadow-sm transition ${ttsStatus === "playing"
-                          ? "bg-[#bf2f1f] text-white border-[#bf2f1f]"
-                          : "bg-white text-[#1c242c] border-[#e8e1d8] hover:border-[#bf2f1f]"
-                          } ${!ttsText || ttsStatus === "unavailable" ? "opacity-50 cursor-not-allowed" : ""}`}
-                        aria-label={ttsStatus === "playing" ? "Pause text to speech" : "Play text to speech"}
-                        title={ttsStatus === "playing" ? "Pause text to speech" : "Play text to speech"}
-                      >
-                        {ttsStatus === "playing" ? <Pause size={14} /> : <Play size={14} />}
-                        {ttsStatus === "playing" ? "Pause" : ttsStatus === "paused" ? "Resume" : "Listen"}
-                      </button>
-                    </div>
-                  )}
+
                   {hasBlockLayout && contentBlocks ? (
-                    <div className="space-y-6">{renderContentBlocks(contentBlocks.blocks, "main")}</div>
+                    contentBlocks.blocks.length > 0 ? (
+                      <div className="space-y-6">{renderContentBlocks(contentBlocks.blocks, "main")}</div>
+                    ) : (
+                      <p className="text-sm text-[#4a4845]">No study material for this lesson.</p>
+                    )
                   ) : formattedStudyText ? (
                     <div className="rounded-3xl border border-[#e8e1d8] bg-white shadow-[0_20px_60px_rgba(0,0,0,0.08)]">
                       <div className="p-6 sm:p-8 prose prose-base max-w-none text-[#1e293b]">
@@ -4487,6 +4700,7 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
         <WidgetContainer
           chatProps={widgetChatProps}
           studyProps={widgetStudyProps}
+          analogyProps={widgetAnalogyProps}
           ttsProps={widgetTtsProps}
           quizProps={widgetQuizProps}
           coldCallingProps={widgetColdCallingProps}
@@ -4498,6 +4712,7 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
         <WidgetContainer
           chatProps={widgetChatProps}
           studyProps={widgetStudyProps}
+          analogyProps={widgetAnalogyProps}
           ttsProps={widgetTtsProps}
           quizProps={widgetQuizProps}
           coldCallingProps={widgetColdCallingProps}
@@ -4550,22 +4765,6 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
           </div>
         )
       }
-
-      <button
-        onClick={() => {
-          if (!chatOpen) {
-            // Eagerly compute position before opening so there's no flash at (0,0)
-            setChatRect(getChatPresetRect(chatExpanded));
-            setChatOpen(true);
-          } else {
-            setChatOpen(false);
-          }
-        }}
-        className={`fixed bottom-8 right-8 z-50 p-4 bg-[#bf2f1f] text-white rounded-full shadow-2xl hover:bg-[#a62619] hover:scale-110 transition-all border-2 border-white ${isFullScreen || isQuizMode ? "hidden" : ""}`}
-        title="Chat with AI Tutor"
-      >
-        {chatOpen ? <X size={24} /> : <MessageSquare size={24} />}
-      </button>
 
       {
         isCohortProgram && (
