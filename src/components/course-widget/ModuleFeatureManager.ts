@@ -61,9 +61,7 @@ export interface LessonFeatureInput {
   hasAnalogyBlocks?: boolean;
 }
 
-const ALWAYS_AVAILABLE_FEATURES: WidgetFeatureId[] = [
-  "notes",
-];
+const ALWAYS_AVAILABLE_FEATURES: WidgetFeatureId[] = [];
 
 /**
  * Determines which widget features are available for a given lesson.
@@ -86,28 +84,12 @@ export function resolveModuleFeatures(
 
   const features: WidgetFeature[] = [
     {
-      id: "study",
-      label: "Study Material",
-      icon: "BookOpen",
-      tooltip: "Study Material",
-      available: hasText,
-      order: 1,
-    },
-    {
       id: "analogy",
       label: "Analogy",
       icon: "Lightbulb",
       tooltip: "Analogy",
       available: hasAnalogy,
       order: 1.5,
-    },
-    {
-      id: "notes",
-      label: "Notes",
-      icon: "PenLine",
-      tooltip: "My Notes",
-      available: true,
-      order: 3,
     },
     {
       id: "listen",
@@ -118,28 +100,12 @@ export function resolveModuleFeatures(
       order: 4,
     },
     {
-      id: "ppt",
-      label: "Slides",
-      icon: "Presentation",
-      tooltip: "Presentation Slides",
-      available: hasPpt,
-      order: 5,
-    },
-    {
       id: "pdf",
       label: "PDF",
       icon: "FileText",
       tooltip: "PDF Document",
       available: false, // No PDF data in current model
       order: 6,
-    },
-    {
-      id: "media",
-      label: "Media",
-      icon: "Play",
-      tooltip: "Media Player",
-      available: hasVideo,
-      order: 7,
     },
     {
       id: "course-videos",
