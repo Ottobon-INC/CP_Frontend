@@ -118,6 +118,19 @@ const getYouTubeVideoId = (url?: string | null) => {
   }
 };
 
+const buildYouTubeAutoplayUrl = (url?: string | null) => {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    parsed.searchParams.set("autoplay", "1");
+    parsed.searchParams.set("playsinline", "1");
+    parsed.searchParams.set("rel", "0");
+    return parsed.toString();
+  } catch {
+    return url;
+  }
+};
+
 const formatCourseKeyLabel = (value?: string | null) => {
   if (!value) return "Course Content";
   return value
@@ -239,6 +252,7 @@ interface Lesson {
   topicName: string;
   videoUrl: string | null;
   textContent: string | null;
+  analogyTextContent?: string | null;
   contentType: string;
   pptUrl?: string | null;
   slug: string;
@@ -1080,6 +1094,7 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
     [lessons, activeSlug, isModuleUnlocked],
   );
   const activeStudyText = useMemo(() => activeLesson?.textContent ?? "", [activeLesson?.textContent]);
+  const activeAnalogyText = useMemo(() => activeLesson?.analogyTextContent ?? "", [activeLesson?.analogyTextContent]);
   const formattedStudyText = useMemo(() => {
     const normalized = normalizeStudyMarkdown(activeStudyText);
     if (normalized) {
@@ -1614,6 +1629,7 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
         topicName: t.topicName,
         videoUrl: t.videoUrl,
         textContent: t.textContent,
+        analogyTextContent: typeof t.analogyTextContent === "string" ? t.analogyTextContent : null,
         contentType: t.contentType,
         pptUrl: t.pptUrl ?? null,
         slug: slugify(t.topicName),
@@ -3625,6 +3641,7 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
               : activeLesson?.topicName ?? "Lesson video";
           const isYoutubeVideo = isYouTubeVideoUrl(videoUrl);
           const youtubeVideoId = getYouTubeVideoId(videoUrl);
+          const youtubeAutoplayUrl = buildYouTubeAutoplayUrl(videoUrl);
           const videoActivationKey = `block:${key}:${videoUrl}`;
           const isVideoActivated = Boolean(activatedVideos[videoActivationKey]);
           const videoWrapperClass = `transition-[max-height,opacity] duration-300 ease-in-out ${isReadingMode
@@ -3662,7 +3679,7 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
                     ) : isYoutubeVideo ? (
                       <iframe
                         className="w-full h-full block border-0 rounded-[inherit] overflow-hidden"
-                        src={videoUrl}
+                        src={isVideoActivated ? (youtubeAutoplayUrl ?? videoUrl) : videoUrl}
                         title={title}
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                         allowFullScreen
@@ -3702,6 +3719,9 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
         }
 
         if (block.type === "quiz") {
+          if (variant === "main") {
+            continue;
+          }
           const assessmentId =
             typeof data?.assessment_id === "string"
               ? data.assessment_id.trim()
@@ -4075,9 +4095,7 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
     const hasStudy = hasBlockLayout
       ? partitionedBlocks.studyBlocks.some((b: any) => b.type === "text" || b.type === "image")
       : Boolean(partitionedMarkdown?.studyMarkdown);
-    const hasAnalogy = hasBlockLayout
-      ? partitionedBlocks.analogyBlocks.some((b: any) => b.type === "text" || b.type === "image")
-      : Boolean(partitionedMarkdown?.analogyMarkdown);
+    const hasAnalogy = Boolean(activeLesson?.analogyTextContent?.trim());
 
     return {
       topicId: widgetLesson.topicId,
@@ -4092,7 +4110,7 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
       hasStudyBlocks: hasStudy,
       hasAnalogyBlocks: hasAnalogy,
     };
-  }, [widgetLesson, hasBlockLayout, contentBlocks, hasColdCalling, partitionedBlocks, partitionedMarkdown]);
+  }, [widgetLesson, hasBlockLayout, contentBlocks, hasColdCalling, partitionedBlocks, partitionedMarkdown, activeLesson?.analogyTextContent]);
 
   const widgetChatProps = useMemo(() => ({
     messages: chatMessages,
@@ -4115,10 +4133,8 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
   }), [hasBlockLayout, partitionedBlocks.studyBlocks, partitionedMarkdown?.studyMarkdown]);
 
   const widgetAnalogyProps = useMemo(() => ({
-    formattedStudyText: hasBlockLayout
-      ? JSON.stringify({ blocks: partitionedBlocks.analogyBlocks })
-      : partitionedMarkdown?.analogyMarkdown || "",
-  }), [hasBlockLayout, partitionedBlocks.analogyBlocks, partitionedMarkdown?.analogyMarkdown]);
+    formattedStudyText: activeAnalogyText,
+  }), [activeAnalogyText]);
 
   const widgetTtsProps = useMemo(() => ({
     onToggleTts: toggleTts,
@@ -4464,7 +4480,7 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
                   ) : isYouTubeVideoUrl(activeVideoUrl) ? (
                     <iframe
                       className="w-full h-full block border-0 rounded-[inherit] overflow-hidden"
-                      src={activeVideoUrl}
+                      src={activatedVideos[`hero:${activeVideoUrl}`] ? (buildYouTubeAutoplayUrl(activeVideoUrl) ?? activeVideoUrl) : activeVideoUrl}
                       title={activeLesson?.topicName ?? "Lesson video"}
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                       allowFullScreen
@@ -4502,12 +4518,12 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
                 <div id="main-study-content" className="space-y-4 text-left" ref={studyContentRef}>
 
                   {hasBlockLayout && contentBlocks ? (
-                    contentBlocks.blocks.length > 0 ? (
-                      <div className="space-y-6">{renderContentBlocks(contentBlocks.blocks, "main")}</div>
+                    partitionedBlocks.studyBlocks.length > 0 ? (
+                      <div className="space-y-6">{renderContentBlocks(partitionedBlocks.studyBlocks, "main")}</div>
                     ) : (
                       <p className="text-sm text-[#4a4845]">No study material for this lesson.</p>
                     )
-                  ) : formattedStudyText ? (
+                  ) : partitionedMarkdown?.studyMarkdown ? (
                     <div className="rounded-3xl border border-[#e8e1d8] bg-white shadow-[0_20px_60px_rgba(0,0,0,0.08)]">
                       <div className="p-6 sm:p-8 prose prose-base max-w-none text-[#1e293b]">
                         <ReactMarkdown
@@ -4515,7 +4531,7 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
                           rehypePlugins={[rehypeSanitize]}
                           components={ttsMarkdownComponents}
                         >
-                          {formattedStudyText}
+                          {partitionedMarkdown.studyMarkdown}
                         </ReactMarkdown>
                       </div>
                     </div>
@@ -4523,10 +4539,6 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
                     <p className="text-sm text-[#4a4845]">No study material for this lesson.</p>
                   )}
                 </div>
-
-                {hasStudyContent && activeLesson?.topicId && (
-                  <ColdCalling topicId={activeLesson.topicId} session={session} onTelemetryEvent={emitTelemetry} />
-                )}
 
                 {!hasBlockLayout && activePptEmbedUrl && activeLesson?.pptUrl && (
                   <div className="space-y-3">
