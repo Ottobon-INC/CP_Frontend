@@ -96,6 +96,9 @@ function Router() {
       <Route path="/ondemand/:id/congrats/certificate" component={CourseCertificatePage} />
       <Route path="/ondemand/:id/congrats/feedback" component={CongratsFeedbackPage} />
       <Route path="/ondemand/:id/congrats" component={CongratsPage} />
+      <Route path="/course/:id/congrats/certificate" component={CourseCertificatePage} />
+      <Route path="/course/:id/congrats/feedback" component={CongratsFeedbackPage} />
+      <Route path="/course/:id/congrats" component={CongratsPage} />
       <Route path="/course/:id" component={CourseDetailsPage} />
       <Route path="/ondemand/:id" component={CourseDetailsPage} />
       <Route path="/workshop/:id" component={WorkshopDetailsPage} />

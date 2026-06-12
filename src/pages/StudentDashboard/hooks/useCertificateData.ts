@@ -12,6 +12,8 @@ export interface StudentCertificate {
   rating: number | null;
   feedbackText: string | null;
   organizationName: string;
+  fileUrl?: string | null;
+  verifyId?: string | null;
 }
 
 export interface StudentCertificatesData {

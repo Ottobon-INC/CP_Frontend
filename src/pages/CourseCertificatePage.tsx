@@ -12,6 +12,7 @@ type CertificateSummary = {
   rating: number | null;
   feedbackText: string | null;
   issuedAt: string;
+  fileUrl?: string | null;
 };
 
 type CertificateResponse = {
@@ -135,6 +136,8 @@ const CourseCertificatePage = () => {
   const [userName, setUserName] = useState(fallbackName);
   const [courseName, setCourseName] = useState(defaultCourseTitle);
   const [issuedAt, setIssuedAt] = useState<string | null>(null);
+  const [fileUrl, setFileUrl] = useState<string | null>(null);
+  const [driveItemId, setDriveItemId] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -147,12 +150,14 @@ const CourseCertificatePage = () => {
         }
         const res = await fetch(buildApiUrl(`/api/certificates/${courseKey}?programType=ondemand`), { headers });
         if (!res.ok) throw new Error("Unable to load certificate details");
-        const payload = (await res.json()) as CertificateResponse;
+        const payload = (await res.json()) as CertificateResponse & { certificate?: { driveItemId?: string | null } };
         if (!mounted) return;
         const certificate = payload.certificate ?? null;
         setUserName(certificate?.displayName ?? payload.learner?.name ?? fallbackName);
         setCourseName(certificate?.courseTitle ?? payload.course?.title ?? defaultCourseTitle);
         setIssuedAt(certificate?.issuedAt ?? null);
+        setFileUrl(certificate?.fileUrl ?? null);
+        setDriveItemId(certificate?.driveItemId ?? null);
       } catch {
         if (!mounted) return;
         setUserName(fallbackName);
@@ -189,11 +194,17 @@ const CourseCertificatePage = () => {
       <div className="px-4 py-12 sm:px-6">
         <button
           type="button"
-          onClick={() => setLocation(`/ondemand/${courseKey}/learn/start`)}
+          onClick={() => {
+            if (window.history.length > 2) {
+              window.history.back();
+            } else {
+              setLocation('/certificates');
+            }
+          }}
           className="certificate-print-hide mb-6 inline-flex items-center gap-2 rounded-full border border-white/20 px-4 py-2 text-sm text-[#FBE9D0]/80 transition hover:border-white/40 hover:text-white"
         >
           <ArrowLeft size={18} />
-          Back to course overview
+          Back
         </button>
 
         <div className="flex min-h-[70vh] flex-col items-center justify-center space-y-8 text-center print:space-y-4">
@@ -210,7 +221,15 @@ const CourseCertificatePage = () => {
           </div>
 
           <div id="certificate-print-area" className="w-full">
-            <CertificateFrame userName={userName} courseName={courseName} issuedAt={issuedAt} />
+            {(driveItemId || fileUrl) ? (
+              (fileUrl?.toLowerCase().endsWith('.pdf')) ? (
+                <iframe src={driveItemId ? buildApiUrl(`/api/certificates/${courseKey}/file?programType=ondemand`) : fileUrl!} title="Certificate" className="w-full h-[600px] max-w-5xl mx-auto rounded-[26px] shadow-[0_24px_70px_rgba(0,0,0,0.45)] border-none" />
+              ) : (
+                <img src={driveItemId ? buildApiUrl(`/api/certificates/${courseKey}/file?programType=ondemand`) : fileUrl!} alt="Certificate" className="w-full max-w-5xl mx-auto rounded-[26px] shadow-[0_24px_70px_rgba(0,0,0,0.45)]" />
+              )
+            ) : (
+              <CertificateFrame userName={userName} courseName={courseName} issuedAt={issuedAt} />
+            )}
           </div>
 
           <div className="certificate-print-hide flex flex-col gap-4 pt-6 text-[#FBE9D0] sm:flex-row">
