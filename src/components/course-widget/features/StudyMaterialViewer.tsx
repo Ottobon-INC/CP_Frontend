@@ -2,7 +2,7 @@ import React, { useEffect, useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
-import { BookOpen } from "lucide-react";
+import { BookOpen, Check } from "lucide-react";
 import { useWidgetContext } from "../WidgetContext";
 import type { Components } from "react-markdown";
 
@@ -69,6 +69,7 @@ interface StudyMaterialViewerProps {
   formattedStudyText?: string;
   onToggleTts?: () => void;
   ttsStatus?: "idle" | "playing" | "paused" | "unavailable";
+  onComplete?: () => void;
 }
 
 export default function StudyMaterialViewer({
@@ -76,8 +77,58 @@ export default function StudyMaterialViewer({
   onToggleTts,
   ttsStatus = "idle",
   autoStartTts = false,
+  onComplete,
 }: StudyMaterialViewerProps) {
-  const { activeLesson } = useWidgetContext();
+  const { activeLesson, activeTab, completedFeatures } = useWidgetContext();
+  const bottomRef = React.useRef<HTMLDivElement>(null);
+  const wasPlayingRef = React.useRef(false);
+
+  const isCompleted = activeTab ? completedFeatures.includes(activeTab) : false;
+
+  // Track Audio completion
+  React.useEffect(() => {
+    if (ttsStatus === "playing") {
+      wasPlayingRef.current = true;
+    } else if (ttsStatus === "idle" && wasPlayingRef.current) {
+      wasPlayingRef.current = false;
+      if (activeTab === "listen") {
+        onComplete?.();
+      }
+    }
+  }, [ttsStatus, onComplete, activeTab]);
+
+  // Track Reading completion automatically with a 3-second dwell time at the bottom
+  React.useEffect(() => {
+    if (activeTab !== "study" && activeTab !== "analogy") return;
+    const el = bottomRef.current;
+    if (!el) return;
+
+    let hasIntersected = false;
+    let timer: number;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          if (!hasIntersected) {
+            hasIntersected = true;
+            timer = window.setTimeout(() => {
+              onComplete?.();
+            }, 3000);
+          }
+        } else {
+          hasIntersected = false;
+          window.clearTimeout(timer);
+        }
+      },
+      { threshold: 0.1 }
+    );
+    observer.observe(el);
+
+    return () => {
+      observer.disconnect();
+      window.clearTimeout(timer);
+    };
+  }, [onComplete, activeTab]);
 
   const studyText = useMemo(() => {
     return externalText || activeLesson?.textContent?.trim() || "";
@@ -89,16 +140,9 @@ export default function StudyMaterialViewer({
       try {
         const parsed = JSON.parse(raw);
         if (parsed && typeof parsed === "object" && Array.isArray(parsed.blocks)) {
-          const parsedBlocks = parsed.blocks as any[];
-          // Verify at least one text block has resolvable content
-          const hasResolvedText = parsedBlocks.some(
-            (b: any) => b.type === "text" && resolveTextVariant(b.data)
-          );
-          if (hasResolvedText || parsedBlocks.some((b: any) => b.type === "image")) {
-            return parsedBlocks;
-          }
-          // All text blocks resolved to empty — fall through to plain markdown rendering
-          return null;
+          // If valid JSON blocks format, ALWAYS return it, even if empty.
+          // This prevents it from falling back to raw markdown text rendering for JSON strings.
+          return parsed.blocks as any[];
         }
       } catch (e) {
         // Fall back to null
@@ -106,6 +150,15 @@ export default function StudyMaterialViewer({
     }
     return null;
   }, [studyText]);
+
+  // If blocks is an array but contains no resolvable text or image, treat it as empty.
+  const hasEmptyBlocks = useMemo(() => {
+    if (!blocks) return false;
+    return !blocks.some(
+      (b: any) =>
+        (b.type === "text" && resolveTextVariant(b.data)) || b.type === "image"
+    );
+  }, [blocks]);
 
   // Signal to CoursePlayerPage that widget study content is now mounted
   // so it can re-build TTS segments from the newly-rendered DOM.
@@ -119,7 +172,7 @@ export default function StudyMaterialViewer({
     };
   }, [studyText]);
 
-  if (!studyText) {
+  if (!studyText || hasEmptyBlocks) {
     return (
       <div className="flex flex-col items-center justify-center h-full p-6 text-center">
         <div className="w-14 h-14 rounded-2xl bg-[#4a4845]/8 flex items-center justify-center mb-3">
@@ -134,7 +187,7 @@ export default function StudyMaterialViewer({
   }
 
   return (
-    <div id="widget-study-content" className="p-4 space-y-4">
+    <div id="widget-study-content" className="p-4 space-y-4 flex-1 overflow-y-auto min-h-0">
       {/* TTS Control */}
       {onToggleTts && (
         <div className="flex justify-end">
@@ -213,6 +266,9 @@ export default function StudyMaterialViewer({
           Companion reading for "{activeLesson.topicName}"
         </p>
       )}
+
+      {/* Sentinel for reading completion tracking */}
+      <div ref={bottomRef} className="h-4" />
     </div>
   );
 }

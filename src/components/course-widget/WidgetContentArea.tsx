@@ -31,7 +31,7 @@ function PanelSkeleton() {
 }
 
 /* ── Feature → Component mapping ── */
-const FEATURE_COMPONENTS: Record<WidgetFeatureId, React.LazyExoticComponent<React.FC<any>>> = {
+const FEATURE_COMPONENTS: Partial<Record<WidgetFeatureId, React.LazyExoticComponent<React.FC<any>>>> = {
   study: StudyMaterialViewer,
   notes: NotesEditor,
   listen: StudyMaterialViewer, // Listen uses same viewer with TTS auto-start flag
@@ -45,12 +45,30 @@ const FEATURE_COMPONENTS: Record<WidgetFeatureId, React.LazyExoticComponent<Reac
   "course-videos": VideoGalleryPanel,
   simulation: SimulationPanel,
   "cold-calling": ColdCalling,
+  analogy: StudyMaterialViewer,
 };
+
+function PlaceholderPanel({ title }: { title?: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center h-full p-6 text-center space-y-4">
+      <div className="w-16 h-16 rounded-full bg-[#bf2f1f]/10 text-[#bf2f1f] flex items-center justify-center text-2xl">
+        🚧
+      </div>
+      <div>
+        <h3 className="text-lg font-bold text-[#000000]">{title ?? "Coming Soon"}</h3>
+        <p className="text-sm text-[#4a4845] mt-1 max-w-xs mx-auto">
+          This feature is currently under development. Please check back later!
+        </p>
+      </div>
+    </div>
+  );
+}
 
 interface WidgetContentAreaProps {
   /** Extra props passed through to feature components */
   chatProps?: Record<string, unknown> | null;
   studyProps?: Record<string, unknown> | null;
+  analogyProps?: Record<string, unknown> | null;
   ttsProps?: Record<string, unknown> | null;
   quizProps?: Record<string, unknown> | null;
   coldCallingProps?: Record<string, unknown> | null;
@@ -59,11 +77,12 @@ interface WidgetContentAreaProps {
 export default function WidgetContentArea({
   chatProps,
   studyProps,
+  analogyProps,
   ttsProps,
   quizProps,
   coldCallingProps,
 }: WidgetContentAreaProps) {
-  const { activeTab } = useWidgetContext();
+  const { activeTab, markFeatureComplete } = useWidgetContext();
 
   const content = useMemo(() => {
     if (!activeTab) {
@@ -82,22 +101,27 @@ export default function WidgetContentArea({
       );
     }
 
-    const Component = FEATURE_COMPONENTS[activeTab];
+    const Component = FEATURE_COMPONENTS[activeTab as WidgetFeatureId];
     if (!Component) {
-      return (
-        <div className="p-4 text-sm text-[#4a4845]">
-          Feature not available yet.
-        </div>
-      );
+      let title = "Feature";
+      if (activeTab === "tbq") title = "Time-Bounded Questions";
+      else if (activeTab === "collab") title = "Collaboration";
+      else if (activeTab === "assignment") title = "Assignments";
+      return <PlaceholderPanel title={title} />;
     }
 
     // Build props depending on the active tab
-    const extraProps: Record<string, unknown> = {};
+    const extraProps: Record<string, unknown> = {
+      onComplete: () => markFeatureComplete(activeTab as WidgetFeatureId),
+    };
     if ((activeTab === "study" || activeTab === "listen") && studyProps) {
       Object.assign(extraProps, studyProps);
-      if (activeTab === "listen") {
-        extraProps.autoStartTts = true;
-      }
+    }
+    if (activeTab === "analogy" && analogyProps) {
+      Object.assign(extraProps, analogyProps);
+    }
+    if (activeTab === "listen") {
+      extraProps.autoStartTts = true;
     }
     if (activeTab === "listen" && ttsProps) {
       Object.assign(extraProps, ttsProps);
@@ -116,7 +140,7 @@ export default function WidgetContentArea({
         </div>
       </Suspense>
     );
-  }, [activeTab, chatProps, studyProps, ttsProps, quizProps, coldCallingProps]);
+  }, [activeTab, chatProps, studyProps, analogyProps, ttsProps, quizProps, coldCallingProps, markFeatureComplete]);
 
   return <>{content}</>;
 }

@@ -1,10 +1,43 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { Cpu } from "lucide-react";
 import { useWidgetContext } from "../WidgetContext";
 import SimulationExercise from "@/components/SimulationExercise";
 
-export default function SimulationPanel() {
+export default function SimulationPanel({ onComplete }: { onComplete?: () => void }) {
   const { activeLesson } = useWidgetContext();
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  // Track scroll-to-bottom completion
+  useEffect(() => {
+    const el = bottomRef.current;
+    if (!el) return;
+
+    let hasIntersected = false;
+    let timer: number;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          if (!hasIntersected) {
+            hasIntersected = true;
+            timer = window.setTimeout(() => {
+              onComplete?.();
+            }, 3000); // 3 seconds dwell time at the bottom
+          }
+        } else {
+          hasIntersected = false;
+          window.clearTimeout(timer);
+        }
+      },
+      { threshold: 0.1 }
+    );
+    observer.observe(el);
+
+    return () => {
+      observer.disconnect();
+      window.clearTimeout(timer);
+    };
+  }, [onComplete]);
 
   if (!activeLesson?.simulation) {
     return (
@@ -38,6 +71,8 @@ export default function SimulationPanel() {
         <div className="mt-[-2rem] space-y-4">
           <SimulationExercise simulation={activeLesson.simulation as any} />
         </div>
+        {/* Sentinel for completion tracking */}
+        <div ref={bottomRef} className="h-4" />
       </div>
     </div>
   );

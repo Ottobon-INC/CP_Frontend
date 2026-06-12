@@ -50,6 +50,7 @@ interface AssessmentWidgetProps {
   selectInlineQuizAnswer?: (runtimeKey: string, questionId: string, optionId: string) => void;
   submitInlineQuiz?: (runtimeKey: string, moduleNo: number | null) => Promise<void>;
   moduleNo?: number | null;
+  onComplete?: () => void;
 }
 
 export default function AssessmentWidget({
@@ -66,8 +67,15 @@ export default function AssessmentWidget({
   selectInlineQuizAnswer,
   submitInlineQuiz,
   moduleNo,
+  onComplete,
 }: AssessmentWidgetProps) {
   const { activeLesson } = useWidgetContext();
+
+  React.useEffect(() => {
+    if (runtime?.phase === "result" && runtime.result?.passed) {
+      onComplete?.();
+    }
+  }, [runtime?.phase, runtime?.result?.passed, onComplete]);
 
   // If no quiz block is parsed for this topic, render the placeholder
   if (!runtimeKey) {
