@@ -4,14 +4,16 @@ import { Check } from "lucide-react";
 
 const CongratsFeedbackPage = () => {
   const { id: courseKey } = useParams<{ id: string }>();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
 
   useEffect(() => {
+    const programType = location.startsWith("/ondemand/") ? "ondemand" : "cohort";
+    const pathPrefix = programType === "ondemand" ? "ondemand" : "course";
     const timer = setTimeout(() => {
-      setLocation(`/ondemand/${courseKey}/congrats/certificate`);
+      setLocation(`/${pathPrefix}/${courseKey}/congrats/certificate`);
     }, 2000);
     return () => clearTimeout(timer);
-  }, [courseKey, setLocation]);
+  }, [courseKey, setLocation, location]);
 
   return (
     <div className="flex min-h-screen items-center justify-center px-4" style={{ background: "linear-gradient(135deg, #244855 0%, #874F41 100%)" }}>

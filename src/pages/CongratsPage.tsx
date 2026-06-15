@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation, useParams } from "wouter";
 import { Trophy, Star } from "lucide-react";
 import { buildApiUrl } from "@/lib/api";
@@ -140,7 +140,9 @@ const FireworkBurst = () => {
 
 const CongratsPage = () => {
   const { id: courseKey } = useParams<{ id: string }>();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
+  const programType = location.startsWith("/ondemand/") ? "ondemand" : "cohort";
+  const pathPrefix = programType === "ondemand" ? "ondemand" : "course";
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [feedback, setFeedback] = useState("");
@@ -163,7 +165,7 @@ const CongratsPage = () => {
         if (currentSession?.accessToken) {
           headers.Authorization = `Bearer ${currentSession.accessToken}`;
         }
-        const res = await fetch(buildApiUrl(`/api/certificates/${courseKey}?programType=ondemand`), { headers });
+        const res = await fetch(buildApiUrl(`/api/certificates/${courseKey}?programType=${programType}`), { headers });
         if (!res.ok) throw new Error("Unable to load certificate details");
         const payload = (await res.json()) as CongratsSummary;
         if (mounted) {
@@ -203,7 +205,7 @@ const CongratsPage = () => {
     return () => {
       mounted = false;
     };
-  }, [courseKey, fallbackLearnerName]);
+  }, [courseKey, fallbackLearnerName, programType]);
 
   const handleSubmit = async () => {
     if (!rating) {
@@ -220,7 +222,7 @@ const CongratsPage = () => {
         alert("Please sign in to submit feedback.");
         return;
       }
-      const res = await fetch(buildApiUrl(`/api/certificates/${courseKey}/feedback?programType=ondemand`), {
+      const res = await fetch(buildApiUrl(`/api/certificates/${courseKey}/feedback?programType=${programType}`), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -235,7 +237,7 @@ const CongratsPage = () => {
       if (!res.ok) {
         throw new Error("Unable to submit feedback");
       }
-      setLocation(`/ondemand/${courseKey}/congrats/feedback`);
+      setLocation(`/${pathPrefix}/${courseKey}/congrats/feedback`);
     } catch (error) {
       console.error(error);
       alert("We could not submit your feedback. Please try again.");

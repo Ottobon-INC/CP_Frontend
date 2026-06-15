@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useParams } from "wouter";
-import { Trophy, ArrowLeft } from "lucide-react";
+import { Trophy, ArrowLeft, Loader2 } from "lucide-react";
 import { buildApiUrl } from "@/lib/api";
 import { ensureSessionFresh, readStoredSession } from "@/utils/session";
 import logoImage from "@/logo.png";
@@ -128,8 +128,9 @@ const CertificateFrame = ({
 
 const CourseCertificatePage = () => {
   const { id: courseKey } = useParams<{ id: string }>();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const session = useMemo(() => readStoredSession(), []);
+  const accessToken = session?.accessToken || "";
   const fallbackName = useMemo(() => session?.fullName || session?.email || "Learner", [session]);
 
   const defaultCourseTitle = "Advanced Web Development Masterclass";
@@ -138,6 +139,9 @@ const CourseCertificatePage = () => {
   const [issuedAt, setIssuedAt] = useState<string | null>(null);
   const [fileUrl, setFileUrl] = useState<string | null>(null);
   const [driveItemId, setDriveItemId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const programType = location.startsWith("/ondemand/") ? "ondemand" : "cohort";
 
   useEffect(() => {
     let mounted = true;
@@ -148,7 +152,7 @@ const CourseCertificatePage = () => {
         if (currentSession?.accessToken) {
           headers.Authorization = `Bearer ${currentSession.accessToken}`;
         }
-        const res = await fetch(buildApiUrl(`/api/certificates/${courseKey}?programType=ondemand`), { headers });
+        const res = await fetch(buildApiUrl(`/api/certificates/${courseKey}?programType=${programType}`), { headers });
         if (!res.ok) throw new Error("Unable to load certificate details");
         const payload = (await res.json()) as CertificateResponse & { certificate?: { driveItemId?: string | null } };
         if (!mounted) return;
@@ -161,16 +165,28 @@ const CourseCertificatePage = () => {
       } catch {
         if (!mounted) return;
         setUserName(fallbackName);
+      } finally {
+        if (mounted) {
+          setIsLoading(false);
+        }
       }
     };
     void loadCertificate();
     return () => {
       mounted = false;
     };
-  }, [courseKey, fallbackName, defaultCourseTitle]);
+  }, [courseKey, fallbackName, defaultCourseTitle, programType]);
 
   const handleDownload = () => {
-    window.print();
+    const downloadUrl = driveItemId
+      ? buildApiUrl(`/api/certificates/${courseKey}/file?programType=${programType}&token=${encodeURIComponent(accessToken)}&download=true`)
+      : fileUrl;
+
+    if (downloadUrl) {
+      window.open(downloadUrl, "_blank");
+    } else {
+      window.print();
+    }
   };
 
   return (
@@ -221,11 +237,15 @@ const CourseCertificatePage = () => {
           </div>
 
           <div id="certificate-print-area" className="w-full">
-            {(driveItemId || fileUrl) ? (
+            {isLoading ? (
+              <div className="flex h-[350px] items-center justify-center">
+                <Loader2 className="h-12 w-12 animate-spin text-[#FBE9D0]" />
+              </div>
+            ) : (driveItemId || fileUrl) ? (
               (fileUrl?.toLowerCase().endsWith('.pdf')) ? (
-                <iframe src={driveItemId ? buildApiUrl(`/api/certificates/${courseKey}/file?programType=ondemand`) : fileUrl!} title="Certificate" className="w-full h-[600px] max-w-5xl mx-auto rounded-[26px] shadow-[0_24px_70px_rgba(0,0,0,0.45)] border-none" />
+                <iframe src={driveItemId ? buildApiUrl(`/api/certificates/${courseKey}/file?programType=${programType}&token=${encodeURIComponent(accessToken)}#toolbar=0&navpanes=0&view=Fit`) : fileUrl!} title="Certificate" className="w-full max-w-5xl mx-auto rounded-[26px] shadow-[0_24px_70px_rgba(0,0,0,0.45)] border-none" style={{ aspectRatio: "1.414 / 1" }} />
               ) : (
-                <img src={driveItemId ? buildApiUrl(`/api/certificates/${courseKey}/file?programType=ondemand`) : fileUrl!} alt="Certificate" className="w-full max-w-5xl mx-auto rounded-[26px] shadow-[0_24px_70px_rgba(0,0,0,0.45)]" />
+                <img src={driveItemId ? buildApiUrl(`/api/certificates/${courseKey}/file?programType=${programType}&token=${encodeURIComponent(accessToken)}`) : fileUrl!} alt="Certificate" className="w-full max-w-5xl mx-auto rounded-[26px] shadow-[0_24px_70px_rgba(0,0,0,0.45)]" />
               )
             ) : (
               <CertificateFrame userName={userName} courseName={courseName} issuedAt={issuedAt} />
@@ -236,7 +256,8 @@ const CourseCertificatePage = () => {
             <button
               type="button"
               onClick={handleDownload}
-              className="inline-flex items-center justify-center rounded-2xl border border-[#fbe9d0]/20 bg-[#E64833] px-6 py-3 text-lg font-semibold text-[#FBE9D0] shadow-lg transition hover:-translate-y-0.5 hover:bg-[#d23a25]"
+              disabled={isLoading}
+              className="inline-flex items-center justify-center rounded-2xl border border-[#fbe9d0]/20 bg-[#E64833] px-6 py-3 text-lg font-semibold text-[#FBE9D0] shadow-lg transition hover:-translate-y-0.5 hover:bg-[#d23a25] disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Download Certificate
             </button>
