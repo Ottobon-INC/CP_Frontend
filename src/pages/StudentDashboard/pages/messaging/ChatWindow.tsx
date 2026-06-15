@@ -94,6 +94,26 @@ export default function ChatWindow({
   const [forwardingMessage, setForwardingMessage] = useState<Message | null>(null);
   const [showForwardModal, setShowForwardModal] = useState(false);
 
+  const getConversationAvatarUser = useCallback(
+    (senderId: string) => {
+      const matchedOrgUser = orgUsers.find((u) => u.id === senderId);
+      if (matchedOrgUser?.avatar_url) {
+        return matchedOrgUser;
+      }
+
+      if (
+        selectedConversation?.type === "dm" &&
+        selectedConversation.otherUser &&
+        selectedConversation.otherUser.id === senderId
+      ) {
+        return selectedConversation.otherUser;
+      }
+
+      return matchedOrgUser;
+    },
+    [orgUsers, selectedConversation],
+  );
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageRefs = useRef<Record<string, HTMLDivElement>>({});
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -227,11 +247,25 @@ export default function ChatWindow({
     <>
       {/* Thread Header */}
       <div className="msg-thread-header">
-        <div style={{ display: "flex", alignItems: "center" }}>
+        <div className="msg-thread-identity">
           <button className="msg-back-btn" onClick={onBackToList}>
             <ArrowLeft size={20} />
             <span className="back-label">Back</span>
           </button>
+          {selectedConversation.type === "dm" && (
+            <div className="msg-thread-avatar">
+              <UserAvatar
+                user={
+                  selectedConversation.otherUser ?? {
+                    full_name: selectedConversation.name,
+                    email: "",
+                    avatar_url: selectedConversation.avatar_url,
+                  }
+                }
+                size={34}
+              />
+            </div>
+          )}
           <div className="msg-thread-info">
             <h3>{selectedConversation.name || selectedConversation.otherUser?.full_name || "Conversation"}</h3>
             <span className="msg-thread-type">
@@ -443,7 +477,7 @@ export default function ChatWindow({
                   {!isSent && (
                     <div className="msg-side-avatar-container">
                       {isLastInGroup && (
-                        <UserAvatar user={orgUsers.find(u => u.id === msg.sender_id)} size={28} />
+                        <UserAvatar user={getConversationAvatarUser(msg.sender_id)} size={28} />
                       )}
                     </div>
                   )}
@@ -607,7 +641,7 @@ export default function ChatWindow({
                         {msg.seen_by.slice(0, 3).map((viewer) => {
                           return (
                             <div key={viewer.userId} className="msg-read-avatar-overlapping" title={`Seen by ${viewer.fullName}`}>
-                              <UserAvatar user={orgUsers.find(u => u.id === viewer.userId)} size={18} />
+                              <UserAvatar user={getConversationAvatarUser(viewer.userId)} size={18} />
                             </div>
                           );
                         })}

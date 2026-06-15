@@ -608,7 +608,14 @@ export function ForwardModal({
                 style={{ cursor: "pointer", transition: "0.2s" }}
               >
                 <div className="msg-conv-avatar" style={{ width: 32, height: 32, minWidth: 32 }}>
-                  {c.name ? c.name[0] : (c.otherUser?.full_name ? c.otherUser.full_name[0] : "?")}
+                  <UserAvatar
+                    user={{
+                      full_name: c.name || c.otherUser?.full_name,
+                      email: c.otherUser?.email || "",
+                      avatar_url: c.avatar_url || c.otherUser?.avatar_url,
+                    }}
+                    size={32}
+                  />
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 600, fontSize: 13 }}>{c.name || c.otherUser?.full_name || "Unknown"}</div>
