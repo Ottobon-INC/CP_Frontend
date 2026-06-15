@@ -236,6 +236,7 @@ const CourseDetailsPage = (props: any) => {
   const [modules, setModules] = useState<Module[]>([]);
   const [loading, setLoading] = useState(true);
   const [firstLessonSlug, setFirstLessonSlug] = useState<string | null>(null);
+  const [activeOfferingId, setActiveOfferingId] = useState<string | null>(null);
   const [enrolling, setEnrolling] = useState(false);
   const [cohorts, setCohorts] = useState<any[]>([]);
   const [accessStatus, setAccessStatus] = useState<{
@@ -267,6 +268,17 @@ const CourseDetailsPage = (props: any) => {
           if (mounted) {
             const course = payload?.course;
             const slug = course?.slug ?? courseId;
+            
+            if (slug && slug !== courseId) {
+              const learnPrefix = programType === "ondemand" ? "/ondemand" : programType === "workshop" ? "/workshop" : "/course";
+              setLocation(`${learnPrefix}/${slug}`, { replace: true });
+              return;
+            }
+            
+            if (course?.offeringId) {
+              setActiveOfferingId(course.offeringId);
+            }
+            
             setCourseTitle(course?.title ?? course?.courseName ?? "AI Engineer Bootcamp");
             const normalizedPrice =
               typeof course?.priceCents === "number" && Number.isFinite(course.priceCents)
@@ -406,7 +418,7 @@ const CourseDetailsPage = (props: any) => {
         }
       } else if (!accessStatus.hasApplied) {
         // We do not hardcode the slug, using courseId which represents the current course directly
-        setLocation(`/registration/${programType}/${courseId}`);
+        setLocation(activeOfferingId ? `/registration/${programType}/${courseId}?offeringId=${activeOfferingId}` : `/registration/${programType}/${courseId}`);
       }
     }
   }, [accessStatus, loading, courseId, setLocation, firstLessonSlug, programType]);
@@ -585,7 +597,7 @@ const CourseDetailsPage = (props: any) => {
           navigateToPlayer();
         }
       } else {
-        setLocation(`/registration/${programType}/${courseId}`);
+        setLocation(activeOfferingId ? `/registration/${programType}/${courseId}?offeringId=${activeOfferingId}` : `/registration/${programType}/${courseId}`);
       }
     })();
   };
@@ -707,7 +719,7 @@ const CourseDetailsPage = (props: any) => {
       ) : !accessStatus.hasApplied ? (
         <button
           className={baseClass}
-          onClick={() => setLocation(`/registration/${programType}/${courseId}`)}
+          onClick={() => setLocation(activeOfferingId ? `/registration/${programType}/${courseId}?offeringId=${activeOfferingId}` : `/registration/${programType}/${courseId}`)}
         >
           Register Now
         </button>
@@ -774,7 +786,7 @@ const CourseDetailsPage = (props: any) => {
         );
       }
       return (
-        <button className={baseClass} onClick={() => setLocation(`/registration/${programType}/${courseId}`)}>
+        <button className={baseClass} onClick={() => setLocation(activeOfferingId ? `/registration/${programType}/${courseId}?offeringId=${activeOfferingId}` : `/registration/${programType}/${courseId}`)}>
           Apply for Cohort
         </button>
       );
