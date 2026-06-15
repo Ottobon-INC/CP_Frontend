@@ -201,6 +201,7 @@
   margin-bottom: 2px;
   gap: 8px;
   width: 100%;
+  align-items: flex-end;
 }
 
 .msg-message-row.sent {
@@ -209,6 +210,7 @@
 
 .msg-message-row.received {
   flex-direction: row;
+  align-items: center;
 }
 
 .msg-side-avatar-container {
@@ -217,8 +219,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  align-self: flex-end;
-  margin-bottom: 4px;
+  align-self: center;
+  margin-top: 0;
+  margin-bottom: 0;
 }
 
 .msg-side-avatar-container .user-avatar {
@@ -243,7 +246,7 @@
 
 .msg-wrapper-bubble-actions {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 8px;
   /* Near to message */
   width: fit-content;
@@ -251,6 +254,10 @@
 
 .sent .msg-wrapper-bubble-actions {
   flex-direction: row-reverse;
+}
+
+.received .msg-wrapper-bubble-actions {
+  align-items: center;
 }
 
 .msg-side-actions-trigger {
@@ -535,15 +542,38 @@
   box-shadow: 0 2px 10px rgba(0,0,0,0.02);
 }
 
+.msg-thread-identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.msg-thread-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.msg-thread-info {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+}
+
 .msg-thread-info h3 {
   margin: 0;
   font-size: 15px;
   font-weight: 600;
+  line-height: 1.2;
 }
 
 .msg-thread-type {
   font-size: 11px;
   opacity: 0.8;
+  margin-top: 4px;
 }
 
 .msg-thread-actions {

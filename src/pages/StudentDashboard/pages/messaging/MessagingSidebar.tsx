@@ -39,6 +39,9 @@ export default function MessagingSidebar({
   const [userSearchQuery, setUserSearchQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
 
+  const getConversationAvatarUrl = (conversation: Conversation | undefined | null) =>
+    conversation?.avatar_url || conversation?.otherUser?.avatar_url || null;
+
   const filteredConversations = conversations.filter((conv) => {
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
@@ -192,6 +195,10 @@ export default function MessagingSidebar({
               const lastMessageAt = conv?.conversation_indexes?.[0]?.last_message_at || conv?.messages?.[0]?.created_at || (conv as any)?.last_message_at || "";
               const unseenCount = conv ? (lastReadTimes as any)[conv.id] || 0 : 0;
               const isUnread = unseenCount > 0;
+              const avatarUser =
+                conv && getConversationAvatarUrl(conv)
+                  ? { ...user, avatar_url: getConversationAvatarUrl(conv) ?? user.avatar_url }
+                  : user;
 
               return (
                 <div 
@@ -200,7 +207,7 @@ export default function MessagingSidebar({
                   onClick={() => conv ? onSelectConversation(conv) : onStartChatWithUser(user)}
                 >
                   <div className="msg-conv-avatar">
-                    <UserAvatar user={user} size={36} />
+                    <UserAvatar user={avatarUser} size={36} />
                   </div>
                   <div className="msg-conv-info">
                     <div className="msg-conv-name">{user.full_name || user.email}</div>
