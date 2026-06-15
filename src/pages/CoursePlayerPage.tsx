@@ -713,6 +713,10 @@ type CoursePlayerPageProps = {
   programType?: "cohort" | "ondemand";
 };
 
+type CoursePlayerMeta = {
+  aiTutorAvatarUrl?: string | null;
+};
+
 const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "cohort" }) => {
   const { id: courseKey, lesson: lessonSlugParam } = useParams();
   const [, setLocation] = useLocation();
@@ -731,6 +735,7 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
   const [moduleProgressLoaded, setModuleProgressLoaded] = useState(false);
   const [courseProgress, setCourseProgress] = useState(0);
   const [courseTitle, setCourseTitle] = useState<string>("");
+  const [courseMeta, setCourseMeta] = useState<CoursePlayerMeta | null>(null);
   const [activatedVideos, setActivatedVideos] = useState<Record<string, true>>({});
   const isComplete = useMemo(() => Math.round(courseProgress) >= 100, [courseProgress]);
   const [activeSlug, setActiveSlug] = useState<string | null>(lessonSlugParam ?? null);
@@ -1688,6 +1693,36 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
   useEffect(() => {
     setShouldRefreshStarterBatch(true);
   }, [starterSuggestions]);
+
+  const fetchCourseMeta = useCallback(async () => {
+    if (!courseKey) {
+      setCourseMeta(null);
+      return;
+    }
+
+    try {
+      const res = await fetch(buildApiUrl(`/api/courses/${courseKey}?programType=${programType}`), {
+        credentials: "include",
+      });
+      if (!res.ok) {
+        throw new Error("Failed to load course metadata");
+      }
+      const data = await res.json();
+      setCourseMeta({
+        aiTutorAvatarUrl:
+          typeof data?.course?.aiTutorAvatarUrl === "string" && data.course.aiTutorAvatarUrl.trim().length > 0
+            ? data.course.aiTutorAvatarUrl.trim()
+            : null,
+      });
+    } catch (error) {
+      console.error("Failed to load course metadata", error);
+      setCourseMeta(null);
+    }
+  }, [courseKey, programType]);
+
+  useEffect(() => {
+    void fetchCourseMeta();
+  }, [fetchCourseMeta]);
 
   // Quiz sections are loaded for assessment rendering.
   const fetchSections = useCallback(async () => {
@@ -4102,6 +4137,7 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
       videoUrl: widgetLesson.videoUrl,
       textContent: widgetLesson.textContent,
       pptUrl: widgetLesson.pptUrl,
+      chatAvatarUrl: courseMeta?.aiTutorAvatarUrl ?? null,
       hasContentBlocks: hasBlockLayout,
       hasQuizBlocks: contentBlocks?.blocks?.some(b => b.type === "quiz") ?? false,
       hasSimulation: Boolean(widgetLesson.simulation),
@@ -4110,7 +4146,7 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
       hasStudyBlocks: hasStudy,
       hasAnalogyBlocks: hasAnalogy,
     };
-  }, [widgetLesson, hasBlockLayout, contentBlocks, hasColdCalling, partitionedBlocks, partitionedMarkdown, activeLesson?.analogyTextContent]);
+  }, [widgetLesson, courseMeta?.aiTutorAvatarUrl, hasBlockLayout, contentBlocks, hasColdCalling, partitionedBlocks, partitionedMarkdown, activeLesson?.analogyTextContent]);
 
   const widgetChatProps = useMemo(() => ({
     messages: chatMessages,

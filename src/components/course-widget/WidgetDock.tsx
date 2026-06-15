@@ -89,6 +89,7 @@ export default function WidgetDock() {
           const isActive = isChat ? chatOpen : activeTab === feature.id && isExpanded;
           const isHiddenCompletion = ["study", "analogy", "listen"].includes(feature.id);
           const isCompleted = completedFeatures.includes(feature.id) && !isHiddenCompletion;
+          const hasAvatar = Boolean(isChat && feature.avatarUrl);
 
           return (
             <div key={feature.id} className="relative group">
@@ -110,7 +111,13 @@ export default function WidgetDock() {
                 }`}
                 aria-label={feature.tooltip}
               >
-                {(() => {
+                {hasAvatar ? (
+                  <img
+                    src={feature.avatarUrl ?? undefined}
+                    alt={feature.label}
+                    className="w-full h-full rounded-full object-cover"
+                  />
+                ) : (() => {
                   const Icon = getIconComponent(feature.icon);
                   return <Icon size={20} className={isActive ? "text-white" : ""} />;
                 })()}

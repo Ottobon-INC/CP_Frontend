@@ -32,6 +32,8 @@ export interface WidgetFeature {
   label: string;
   /** Lucide icon name used by the dock */
   icon: string;
+  /** Optional avatar image used in place of the dock icon */
+  avatarUrl?: string | null;
   /** Short tooltip text */
   tooltip: string;
   /** Whether this feature is currently available for the active lesson */
@@ -45,6 +47,7 @@ export interface LessonFeatureInput {
   videoUrl?: string | null;
   textContent?: string | null;
   pptUrl?: string | null;
+  chatAvatarUrl?: string | null;
   /** Whether textContent contains structured content blocks */
   hasContentBlocks?: boolean;
   /** Whether any content block is of type "quiz" */
@@ -191,6 +194,7 @@ export function resolveModuleFeatures(
       id: "chat",
       label: "AI Tutor",
       icon: "MessageSquare",
+      avatarUrl: lesson?.chatAvatarUrl?.trim() || null,
       tooltip: "AI Tutor",
       available: true,
       order: 99,
