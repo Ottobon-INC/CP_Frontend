@@ -3620,9 +3620,9 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
 
           const containerClass =
             variant === "main"
-              ? "rounded-3xl border border-[#e8e1d8] bg-white shadow-[0_20px_60px_rgba(0,0,0,0.08)]"
+              ? ""
               : "rounded-2xl border border-[#000000]/10 bg-white shadow-sm";
-          const paddingClass = variant === "main" ? "p-6 sm:p-8" : "p-4";
+          const paddingClass = variant === "main" ? "" : "p-4";
 
           let attachedImage: React.ReactNode | null = null;
           if (variant === "main" && isFirstTextBlock) {
@@ -4560,16 +4560,14 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
                       <p className="text-sm text-[#4a4845]">No study material for this lesson.</p>
                     )
                   ) : partitionedMarkdown?.studyMarkdown ? (
-                    <div className="rounded-3xl border border-[#e8e1d8] bg-white shadow-[0_20px_60px_rgba(0,0,0,0.08)]">
-                      <div className="p-6 sm:p-8 prose prose-base max-w-none text-[#1e293b]">
-                        <ReactMarkdown
-                          remarkPlugins={[remarkGfm]}
-                          rehypePlugins={[rehypeSanitize]}
-                          components={ttsMarkdownComponents}
-                        >
-                          {partitionedMarkdown.studyMarkdown}
-                        </ReactMarkdown>
-                      </div>
+                    <div className="prose prose-base max-w-none text-[#1e293b]">
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        rehypePlugins={[rehypeSanitize]}
+                        components={ttsMarkdownComponents}
+                      >
+                        {partitionedMarkdown.studyMarkdown}
+                      </ReactMarkdown>
                     </div>
                   ) : (
                     <p className="text-sm text-[#4a4845]">No study material for this lesson.</p>
