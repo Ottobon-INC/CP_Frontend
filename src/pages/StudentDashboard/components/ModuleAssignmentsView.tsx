@@ -73,6 +73,14 @@ export function ModuleAssignmentsView({ courseId, moduleNo, programType, onClose
     });
   };
 
+  const handleAssignmentOpen = (assignment: Assignment) => {
+    if (assignment.status === 'pending' || assignment.status === 'rejected') {
+      setSubmittingAssignment(assignment);
+      return;
+    }
+    setViewingSubmission(assignment);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-12 min-h-[50vh]">
@@ -138,7 +146,19 @@ export function ModuleAssignmentsView({ courseId, moduleNo, programType, onClose
         <div className="p-6 bg-gray-50/20">
           <div className="grid grid-cols-1 gap-4">
             {filteredAssignments.map(assignment => (
-              <div key={assignment.assignmentId} className="group bg-white border border-[#e8e1d8] rounded-2xl p-5 flex flex-col md:flex-row items-center gap-6 hover:border-[#bf2f1f]/30 hover:shadow-md transition-all">
+              <div
+                key={assignment.assignmentId}
+                role="button"
+                tabIndex={0}
+                onClick={() => handleAssignmentOpen(assignment)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    handleAssignmentOpen(assignment);
+                  }
+                }}
+                className="group cursor-pointer bg-white border border-[#e8e1d8] rounded-2xl p-5 flex flex-col md:flex-row items-center gap-6 hover:border-[#bf2f1f]/30 hover:shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-[#bf2f1f]/20"
+              >
                 <div className="w-14 h-14 rounded-2xl bg-gray-50 flex items-center justify-center text-2xl text-gray-400 group-hover:bg-[#bf2f1f]/10 group-hover:text-[#bf2f1f] transition-colors border border-gray-100 flex-shrink-0">
                   <ClipboardList size={26} />
                 </div>
@@ -163,14 +183,20 @@ export function ModuleAssignmentsView({ courseId, moduleNo, programType, onClose
                   
                   {assignment.status === 'pending' || assignment.status === 'rejected' ? (
                     <button 
-                      onClick={() => setSubmittingAssignment(assignment)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setSubmittingAssignment(assignment);
+                      }}
                       className="w-full sm:w-auto bg-[#bf2f1f] text-white px-6 py-2.5 rounded-xl text-[0.7rem] font-black shadow-lg shadow-[#bf2f1f]/20 hover:brightness-110 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 whitespace-nowrap"
                     >
                       {assignment.status === 'rejected' ? 'Resubmit Work' : 'Submit Now'} <i className="fas fa-arrow-right text-[0.6rem]"></i>
                     </button>
                   ) : (
                     <button 
-                      onClick={() => setViewingSubmission(assignment)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setViewingSubmission(assignment);
+                      }}
                       className="w-full sm:w-auto border border-gray-200 text-gray-500 px-6 py-2.5 rounded-xl text-[0.7rem] font-black hover:bg-gray-50 transition-all whitespace-nowrap"
                     >
                       View Submission

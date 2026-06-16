@@ -2,6 +2,7 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { X, ExternalLink, FileText, Calendar, MessageSquare, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
 import { Assignment } from '../hooks/useLearnerAssignments';
+import { AssignmentBodyRenderer } from './AssignmentBodyRenderer';
 
 interface ViewSubmissionModalProps {
   assignment: Assignment;
@@ -57,6 +58,16 @@ export function ViewSubmissionModal({ assignment, onClose }: ViewSubmissionModal
 
         {/* Body */}
         <div className="p-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
+          <div className="mb-8">
+            <label className="flex items-center gap-2 text-[0.65rem] font-black text-gray-400 uppercase tracking-widest mb-3">
+              <FileText size={14} className="text-retro-salmon" />
+              Assignment Description
+            </label>
+            <div className="bg-gray-50 rounded-2xl p-5 border border-gray-100">
+              <AssignmentBodyRenderer body={assignment.body} />
+            </div>
+          </div>
+
           {/* Status Banner */}
           <div className={`mb-8 p-4 rounded-2xl ${config.bg} border border-${config.color}/10 flex items-center gap-4`}>
              <div className="flex-1">

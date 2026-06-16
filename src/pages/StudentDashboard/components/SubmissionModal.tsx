@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { X, Send, Link as LinkIcon, FileText, CheckCircle2, Upload, Paperclip } from 'lucide-react';
 import { useSubmitAssignment, Assignment } from '../hooks/useLearnerAssignments';
 import { apiRequest } from '@/lib/queryClient';
+import { AssignmentBodyRenderer } from './AssignmentBodyRenderer';
 
 interface SubmissionModalProps {
   assignment: Assignment;
@@ -75,7 +76,7 @@ export function SubmissionModal({ assignment, onClose }: SubmissionModalProps) {
 
   return createPortal(
     <div className="msg-modal-overlay flex items-center justify-center p-4 z-[100000]" onClick={onClose}>
-      <div className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-300" onClick={e => e.stopPropagation()}>
+      <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-hidden shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-300 flex flex-col" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="bg-gray-50 px-6 py-6 flex items-center justify-between border-b border-gray-100">
           <div className="flex items-center gap-4">
@@ -93,100 +94,113 @@ export function SubmissionModal({ assignment, onClose }: SubmissionModalProps) {
         </div>
 
         {/* Body */}
-        <form onSubmit={handleSubmit} className="p-6">
-          {/* Text/Link Input */}
-          <div className="mb-6">
-            <label className="flex items-center gap-2 text-xs font-black text-gray-400 uppercase tracking-widest mb-3">
-              <LinkIcon size={14} className="text-retro-salmon" />
-              Links or Notes
-            </label>
-            <div className="relative group">
-              <textarea
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                placeholder="Paste your GitHub repository link, website URL, or type your answer here..."
-                className="w-full h-32 bg-gray-50 border-2 border-transparent focus:border-retro-salmon/20 focus:bg-white rounded-2xl p-4 text-sm font-medium outline-none transition-all resize-none group-hover:bg-gray-100/50"
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+          <div className="p-6 overflow-y-auto flex-1 min-h-0">
+            <div className="mb-6">
+              <label className="flex items-center gap-2 text-xs font-black text-gray-400 uppercase tracking-widest mb-3">
+                <FileText size={14} className="text-retro-salmon" />
+                Assignment Description
+              </label>
+              <div className="bg-gray-50 border border-gray-100 rounded-2xl p-5">
+                <AssignmentBodyRenderer body={assignment.body} />
+              </div>
+            </div>
+
+            {/* Text/Link Input */}
+            <div className="mb-6">
+              <label className="flex items-center gap-2 text-xs font-black text-gray-400 uppercase tracking-widest mb-3">
+                <LinkIcon size={14} className="text-retro-salmon" />
+                Links or Notes
+              </label>
+              <div className="relative group">
+                <textarea
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  placeholder="Paste your GitHub repository link, website URL, or type your answer here..."
+                  className="w-full h-32 bg-gray-50 border-2 border-transparent focus:border-retro-salmon/20 focus:bg-white rounded-2xl p-4 text-sm font-medium outline-none transition-all resize-none group-hover:bg-gray-100/50"
+                />
+              </div>
+            </div>
+
+            {/* File Upload Section */}
+            <div className="mb-2">
+              <label className="flex items-center gap-2 text-xs font-black text-gray-400 uppercase tracking-widest mb-3">
+                <Upload size={14} className="text-retro-salmon" />
+                Attach File
+              </label>
+              
+              {fileData ? (
+                <div className="flex items-center justify-between bg-green-50 border border-green-100 p-4 rounded-2xl">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-green-500/10 rounded-xl flex items-center justify-center text-green-600">
+                      <FileText size={20} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-black text-gray-900 leading-tight">{fileData.fileName}</p>
+                      <p className="text-[0.6rem] text-green-600 font-bold uppercase tracking-wider">Ready to submit</p>
+                    </div>
+                  </div>
+                  <button 
+                    type="button"
+                    onClick={() => setFileData(null)}
+                    className="p-2 hover:bg-green-100 rounded-full text-green-600 transition-colors"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                  className="w-full py-8 border-2 border-dashed border-gray-200 rounded-2xl flex flex-col items-center justify-center gap-3 hover:border-retro-salmon/30 hover:bg-retro-salmon/[0.02] transition-all group"
+                >
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${uploading ? 'bg-retro-salmon/10' : 'bg-gray-50 group-hover:bg-retro-salmon/10'}`}>
+                    {uploading ? (
+                      <div className="w-6 h-6 border-3 border-retro-salmon/30 border-t-retro-salmon rounded-full animate-spin" />
+                    ) : (
+                      <Paperclip size={24} className="text-gray-400 group-hover:text-retro-salmon" />
+                    )}
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm font-black text-gray-700">{uploading ? 'Uploading...' : 'Click to upload a file'}</p>
+                    <p className="text-[0.65rem] text-gray-400 font-bold uppercase tracking-widest mt-1">PDF, ZIP, DOCS (Max 50MB)</p>
+                  </div>
+                </button>
+              )}
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                onChange={handleFileUpload} 
+                className="hidden" 
+                accept=".pdf,.zip,.doc,.docx,.png,.jpg,.jpeg"
               />
             </div>
           </div>
 
-          {/* File Upload Section */}
-          <div className="mb-8">
-            <label className="flex items-center gap-2 text-xs font-black text-gray-400 uppercase tracking-widest mb-3">
-              <Upload size={14} className="text-retro-salmon" />
-              Attach File
-            </label>
-            
-            {fileData ? (
-              <div className="flex items-center justify-between bg-green-50 border border-green-100 p-4 rounded-2xl">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-green-500/10 rounded-xl flex items-center justify-center text-green-600">
-                    <FileText size={20} />
-                  </div>
-                  <div>
-                    <p className="text-sm font-black text-gray-900 leading-tight">{fileData.fileName}</p>
-                    <p className="text-[0.6rem] text-green-600 font-bold uppercase tracking-wider">Ready to submit</p>
-                  </div>
-                </div>
-                <button 
-                  type="button"
-                  onClick={() => setFileData(null)}
-                  className="p-2 hover:bg-green-100 rounded-full text-green-600 transition-colors"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-            ) : (
+          <div className="p-6 border-t border-gray-100 bg-white">
+            <div className="flex items-center gap-4">
               <button
                 type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
-                className="w-full py-8 border-2 border-dashed border-gray-200 rounded-2xl flex flex-col items-center justify-center gap-3 hover:border-retro-salmon/30 hover:bg-retro-salmon/[0.02] transition-all group"
+                onClick={onClose}
+                className="flex-1 py-4 px-6 rounded-2xl text-sm font-black text-gray-400 hover:bg-gray-50 transition-all"
               >
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${uploading ? 'bg-retro-salmon/10' : 'bg-gray-50 group-hover:bg-retro-salmon/10'}`}>
-                  {uploading ? (
-                    <div className="w-6 h-6 border-3 border-retro-salmon/30 border-t-retro-salmon rounded-full animate-spin" />
-                  ) : (
-                    <Paperclip size={24} className="text-gray-400 group-hover:text-retro-salmon" />
-                  )}
-                </div>
-                <div className="text-center">
-                  <p className="text-sm font-black text-gray-700">{uploading ? 'Uploading...' : 'Click to upload a file'}</p>
-                  <p className="text-[0.65rem] text-gray-400 font-bold uppercase tracking-widest mt-1">PDF, ZIP, DOCS (Max 50MB)</p>
-                </div>
+                Cancel
               </button>
-            )}
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              onChange={handleFileUpload} 
-              className="hidden" 
-              accept=".pdf,.zip,.doc,.docx,.png,.jpg,.jpeg"
-            />
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex items-center gap-4 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 py-4 px-6 rounded-2xl text-sm font-black text-gray-400 hover:bg-gray-50 transition-all"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={submitMutation.isPending || uploading || (!content.trim() && !fileData)}
-              className="flex-[2] bg-retro-salmon text-white py-4 px-6 rounded-2xl text-sm font-black shadow-xl shadow-retro-salmon/20 hover:brightness-110 hover:-translate-y-0.5 disabled:opacity-50 disabled:translate-y-0 disabled:shadow-none transition-all flex items-center justify-center gap-2"
-            >
-              {submitMutation.isPending ? (
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : (
-                <>
-                  Submit Work <Send size={16} />
-                </>
-              )}
-            </button>
+              <button
+                type="submit"
+                disabled={submitMutation.isPending || uploading || (!content.trim() && !fileData)}
+                className="flex-[2] bg-retro-salmon text-white py-4 px-6 rounded-2xl text-sm font-black shadow-xl shadow-retro-salmon/20 hover:brightness-110 hover:-translate-y-0.5 disabled:opacity-50 disabled:translate-y-0 disabled:shadow-none transition-all flex items-center justify-center gap-2"
+              >
+                {submitMutation.isPending ? (
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <>
+                    Submit Work <Send size={16} />
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </form>
 

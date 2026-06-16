@@ -83,6 +83,14 @@ export function Assignments() {
     });
   };
 
+  const handleAssignmentOpen = (assignment: Assignment) => {
+    if (assignment.status === 'pending' || assignment.status === 'rejected') {
+      setSubmittingAssignment(assignment);
+      return;
+    }
+    setViewingSubmission(assignment);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-[60vh]">
@@ -182,7 +190,19 @@ export function Assignments() {
         <div className="p-3 md:p-6">
           <div className="grid grid-cols-1 gap-3 md:gap-4">
             {filteredAssignments.map(assignment => (
-              <div key={assignment.assignmentId} className="group bg-white border border-gray-100 rounded-xl md:rounded-2xl p-4 md:p-5 flex flex-col md:flex-row items-center gap-4 md:gap-6 hover:border-retro-salmon/20 hover:shadow-lg hover:shadow-retro-salmon/5 transition-all">
+              <div
+                key={assignment.assignmentId}
+                role="button"
+                tabIndex={0}
+                onClick={() => handleAssignmentOpen(assignment)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    handleAssignmentOpen(assignment);
+                  }
+                }}
+                className="group cursor-pointer bg-white border border-gray-100 rounded-xl md:rounded-2xl p-4 md:p-5 flex flex-col md:flex-row items-center gap-4 md:gap-6 hover:border-retro-salmon/20 hover:shadow-lg hover:shadow-retro-salmon/5 transition-all focus:outline-none focus:ring-2 focus:ring-retro-salmon/20"
+              >
                 <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-2xl bg-gray-50 flex items-center justify-center text-xl md:text-2xl text-gray-400 group-hover:bg-retro-salmon/10 group-hover:text-retro-salmon transition-colors flex-shrink-0 border border-gray-100">
                   <i className={`fas fa-tasks`}></i>
                 </div>
@@ -212,14 +232,20 @@ export function Assignments() {
                   
                   {assignment.status === 'pending' || assignment.status === 'rejected' ? (
                     <button 
-                      onClick={() => setSubmittingAssignment(assignment)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setSubmittingAssignment(assignment);
+                      }}
                       className="w-full sm:w-auto bg-retro-salmon text-white px-6 py-2.5 rounded-xl text-[0.7rem] font-black shadow-lg shadow-retro-salmon/20 hover:brightness-110 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 whitespace-nowrap"
                     >
                       {assignment.status === 'rejected' ? 'Resubmit Work' : 'Submit Now'} <i className="fas fa-arrow-right text-[0.6rem]"></i>
                     </button>
                   ) : (
                     <button 
-                      onClick={() => setViewingSubmission(assignment)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setViewingSubmission(assignment);
+                      }}
                       className="w-full sm:w-auto border border-gray-200 text-gray-500 px-6 py-2.5 rounded-xl text-[0.7rem] font-black hover:bg-gray-50 transition-all whitespace-nowrap"
                     >
                       View Submission
