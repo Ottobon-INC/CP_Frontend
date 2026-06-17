@@ -14,7 +14,6 @@ import {
   Minimize,
   X,
   Send,
-  ArrowUpLeftFromCircle,
   BookOpen,
   ArrowDown,
   Move,
@@ -493,6 +492,7 @@ const CHAT_DEFAULT_HEIGHT = 450;
 const CHAT_EXPAND_SCALE = 1.3;
 const CHAT_RIGHT_OFFSET = 24;
 const CHAT_BOTTOM_OFFSET = 96;
+const CHAT_RAIL_CLEARANCE = 96;
 const CHAT_LOADING_MESSAGES = [
   "Reviewing course context...",
   "Collecting relevant lesson insights...",
@@ -2306,7 +2306,8 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
     const desiredHeight = Math.round(CHAT_DEFAULT_HEIGHT * scale);
     const width = Math.min(desiredWidth, Math.max(280, winW - 12));
     const height = Math.min(desiredHeight, Math.max(240, winH - 12));
-    const x = Math.max(0, winW - width - CHAT_RIGHT_OFFSET);
+    const rightInset = CHAT_RIGHT_OFFSET + (isCompactLayout ? 0 : CHAT_RAIL_CLEARANCE);
+    const x = Math.max(12, winW - width - rightInset);
     const y = Math.max(0, winH - height - CHAT_BOTTOM_OFFSET);
     return { x, y, width, height, initialized: true };
   };
@@ -3256,24 +3257,6 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
     }),
     [],
   );
-  const scrollMainToTop = useCallback((behavior: ScrollBehavior = "smooth") => {
-    const container = contentScrollRef.current;
-    if (container) {
-      container.scrollTo({ top: 0, behavior });
-      return;
-    }
-    window.scrollTo({ top: 0, behavior });
-  }, []);
-  const handleToggleReadMode = useCallback(() => {
-    setIsReadingMode((prev) => {
-      const next = !prev;
-      if (next) {
-        scrollMainToTop("smooth");
-      }
-      return next;
-    });
-  }, [scrollMainToTop]);
-
   const cleanWordSpans = useCallback((container: HTMLElement | null) => {
     if (!container) return;
     const spans = Array.from(container.querySelectorAll(".tts-word"));
@@ -3553,29 +3536,9 @@ const CoursePlayerPage: React.FC<CoursePlayerPageProps> = ({ programType = "coho
             </p>
           </div>
         </div>
-
-        <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
-          <button
-            onClick={handleToggleReadMode}
-            className={`flex w-full sm:w-auto items-center justify-center gap-2 px-4 py-2 rounded-lg border-2 font-bold text-sm transition ${isReadingMode
-              ? "bg-[#bf2f1f] text-white border-[#bf2f1f] hover:bg-[#a62619]"
-              : "bg-white text-[#000000] border-[#000000] hover:bg-[#4a4845]/10"
-              }`}
-          >
-            {isReadingMode ? (
-              <>
-                <ArrowUpLeftFromCircle size={16} /> Restore Video
-              </>
-            ) : (
-              <>
-                <BookOpen size={16} /> Read Mode
-              </>
-            )}
-          </button>
-        </div>
       </div>
     ),
-    [activeLesson?.topicName, handleToggleReadMode, isReadingMode],
+    [activeLesson?.topicName],
   );
   const renderContentBlocks = useCallback(
     (blocks: ContentBlock[], variant: "main" | "widget") => {

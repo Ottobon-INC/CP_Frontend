@@ -363,7 +363,7 @@ export default function ColdCalling({ topicId, session, onTelemetryEvent, onComp
   if (!accessToken) {
     return (
       <div className="rounded-3xl border border-[#eadfd6] bg-white/80 p-6 shadow-sm">
-        <div className="text-sm font-semibold text-[#bf2f1f]">Cold Calling</div>
+        <div className="text-sm font-semibold text-[#bf2f1f]">Social Collaboration</div>
         <p className="text-sm text-[#4a4845] mt-2">
           Sign in to share your response and join the cohort discussion.
         </p>
@@ -374,7 +374,7 @@ export default function ColdCalling({ topicId, session, onTelemetryEvent, onComp
   if (accessMessage) {
     return (
       <div className="rounded-3xl border border-[#f3d3c2] bg-[#fff4ea] p-6 shadow-sm">
-        <div className="text-sm font-semibold text-[#bf2f1f]">Cold Calling</div>
+        <div className="text-sm font-semibold text-[#bf2f1f]">Social Collaboration</div>
         <p className="text-sm text-[#5c2b18] mt-2">{accessMessage}</p>
       </div>
     );
@@ -391,13 +391,13 @@ export default function ColdCalling({ topicId, session, onTelemetryEvent, onComp
   }
 
   return (
-    <div className="rounded-3xl border border-[#f3d3c2] bg-[#fff5f0] p-6 shadow-[0_15px_40px_rgba(0,0,0,0.08)]">
+    <div className="rounded-3xl border border-[#f3d3c2] bg-[#fff5f0] p-6 shadow-[0_15px_40px_rgba(0,0,0,0.08)] h-full min-h-0 flex flex-col overflow-hidden">
       <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wide">
-        <span className="rounded-full bg-[#bf2f1f] px-2.5 py-1 text-white">Cold Calling</span>
+        <span className="rounded-full bg-[#bf2f1f] px-2.5 py-1 text-white">Social Collaboration</span>
         <span className="text-[#bf2f1f]">Cohort Interaction</span>
       </div>
 
-      <div className="mt-4">
+      <div className="mt-4 shrink-0">
         <h4 className="text-lg font-bold text-[#1e293b]">{prompt?.promptText ?? "Cold calling prompt"}</h4>
         {prompt?.helperText && (
           <p className="text-sm text-[#4a4845] mt-1">{prompt.helperText}</p>
@@ -428,12 +428,12 @@ export default function ColdCalling({ topicId, session, onTelemetryEvent, onComp
           </p>
         </div>
       ) : (
-        <div className="mt-6 space-y-4">
-          <div className="text-xs font-semibold uppercase tracking-wide text-[#4a4845]">
+        <div className="mt-6 flex-1 min-h-0 flex flex-col">
+          <div className="text-xs font-semibold uppercase tracking-wide text-[#4a4845] shrink-0">
             Cohort responses ({rootMessages.length} members)
           </div>
 
-          <div className="space-y-4">
+          <div className="mt-4 space-y-4 flex-1 min-h-0 overflow-y-auto pr-2 widget-scrollbar">
             {rootMessages.map((message) => (
               <ColdCallMessageCard
                 key={message.messageId}

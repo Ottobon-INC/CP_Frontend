@@ -89,7 +89,7 @@ export function resolveModuleFeatures(
     {
       id: "analogy",
       label: "Analogy",
-      icon: "Lightbulb",
+      icon: "UserRound",
       tooltip: "Analogy",
       available: hasAnalogy,
       order: 1.5,
@@ -136,9 +136,9 @@ export function resolveModuleFeatures(
     },
     {
       id: "cold-calling",
-      label: "Cold Calling",
-      icon: "PhoneCall",
-      tooltip: "Cold Calling",
+      label: "Social Collaboration",
+      icon: "Handshake",
+      tooltip: "Social Collaboration",
       available: hasColdCalling,
       order: 8.7,
     },
