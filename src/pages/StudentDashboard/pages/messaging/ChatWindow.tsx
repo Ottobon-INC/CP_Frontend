@@ -591,16 +591,16 @@ export default function ChatWindow({
                                 style={{ 
                                   marginLeft: 2, 
                                   display: "inline-block", 
-                                  color: (msg.status === "seen" || (msg.seen_by && msg.seen_by.length > 0)) ? "#E64833" : "inherit" 
+                                  color: (msg.status === "seen" || (msg.seen_by && msg.seen_by.some(u => u.userId !== currentUserId))) ? "#3b82f6" : "inherit" 
                                 }} 
                               />
-                              {(msg.status === "delivered" || msg.status === "seen" || (msg.seen_by && msg.seen_by.length > 0)) && (
+                              {(msg.status === "delivered" || msg.status === "seen" || (msg.seen_by && msg.seen_by.some(u => u.userId !== currentUserId))) && (
                                 <Check 
                                   size={10} 
                                   style={{ 
                                     marginLeft: -6, 
                                     display: "inline-block", 
-                                    color: (msg.status === "seen" || (msg.seen_by && msg.seen_by.length > 0)) ? "#E64833" : "inherit" 
+                                    color: (msg.status === "seen" || (msg.seen_by && msg.seen_by.some(u => u.userId !== currentUserId))) ? "#3b82f6" : "inherit" 
                                   }} 
                                 />
                               )}

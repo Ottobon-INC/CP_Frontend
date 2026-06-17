@@ -81,6 +81,15 @@ export function useMessaging(selectedConversation: Conversation | null) {
     selectedConversationIdRef.current = selectedConversationId;
   }, [selectedConversation, selectedConversationId]);
 
+  const markedAsReadRef = useRef<Set<string>>(new Set());
+
+  const emitMarkAsRead = useCallback((conversationId: string, messageId: string) => {
+    const key = `${conversationId}:${messageId}`;
+    if (markedAsReadRef.current.has(key)) return;
+    markedAsReadRef.current.add(key);
+    socketRef.current?.emit("mark_as_read", { conversationId, messageId });
+  }, []);
+
   useEffect(() => {
     conversationsRef.current = conversations;
   }, [conversations]);
@@ -118,6 +127,12 @@ export function useMessaging(selectedConversation: Conversation | null) {
       });
       const data = await res.json();
       if (data.conversations) setConversations(data.conversations);
+
+      const countsRes = await fetch(`${API_BASE_URL}/api/messaging/conversations/unseen-counts`, {
+        headers: { Authorization: `Bearer ${session.accessToken}` },
+      });
+      const countsData = await countsRes.json();
+      if (countsData.counts) setUnseenCounts(countsData.counts);
     } catch (err) {
       console.error("Failed to fetch conversations:", err);
     }
@@ -142,10 +157,7 @@ export function useMessaging(selectedConversation: Conversation | null) {
         if (msgs.length > 0) {
           const lastMsg = msgs[msgs.length - 1];
           if (lastMsg.sender_id !== session?.userId) {
-            socketRef.current?.emit("mark_as_read", { 
-              conversationId: convId, 
-              messageId: lastMsg.id 
-            });
+            emitMarkAsRead(convId, lastMsg.id);
           }
         }
         
@@ -177,31 +189,36 @@ export function useMessaging(selectedConversation: Conversation | null) {
     }
   }, [session?.accessToken]);
 
-  // Fallback reliability path:
-  // active chat refreshes first, then sidebar preview refreshes.
+  // ── Visibility-change fallback ────────────────────────────────────────────
+  // Now that WebSockets deliver messages in real time, continuous polling is
+  // no longer needed.  The only gap is when the socket was disconnected while
+  // the user was away (tab hidden / phone sleep).  We handle this by watching
+  // the Page Visibility API: when the user returns to the tab we do a single
+  // refresh only if the socket is currently offline.  Zero wasted requests
+  // when everything is healthy.
   useEffect(() => {
     if (!session?.accessToken) return;
 
-    const intervalId = window.setInterval(() => {
-      if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
+    const handleVisibilityChange = () => {
+      if (document.visibilityState !== "visible") return;
+
+      const socket = socketRef.current;
+      // Only fetch if the socket is offline — if it is connected, the server
+      // will push any missed messages automatically on reconnect.
+      if (socket?.connected) return;
 
       const activeConversationId = selectedConversationIdRef.current;
       if (activeConversationId) {
-        void (async () => {
-          await fetchHistory(activeConversationId);
-          // Keep ordering deterministic: chat timeline first, sidebar preview second.
-          setTimeout(() => {
-            void fetchConversations();
-          }, 250);
-        })();
-        return;
+        void fetchHistory(activeConversationId);
+        setTimeout(() => void fetchConversations(), 250);
+      } else {
+        void fetchConversations();
       }
+    };
 
-      void fetchConversations();
-    }, 3000);
-
+    document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => {
-      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [session?.accessToken, fetchConversations, fetchHistory]);
 
@@ -281,8 +298,12 @@ export function useMessaging(selectedConversation: Conversation | null) {
 
       if (isSameActiveConversation || isSameDmParticipants || isSelectedDmPartnerMessage || isSameDmDisplayName) {
         setMessages((prev) => (prev.some((existing) => existing.id === msg.id) ? prev : [...prev, msg]));
-        // Auto-mark as read if we are in the chat
-        socket.emit("mark_as_read", { conversationId: msg.conversation_id, messageId: msg.id });
+        // Auto-mark as read if we are in the chat and it's not our own message
+        if (msg.sender_id !== session?.userId) {
+          if (isSameActiveConversation) {
+            emitMarkAsRead(msg.conversation_id, msg.id);
+          }
+        }
       } else {
         // Increment unseen count for background conversations
         setUnseenCounts((prev) => ({
@@ -303,6 +324,13 @@ export function useMessaging(selectedConversation: Conversation | null) {
               ...c,
               last_message: msg.content,
               last_message_at: msg.created_at,
+              messages: [{
+                id: msg.id,
+                content: msg.content,
+                sender_id: msg.sender_id,
+                created_at: msg.created_at,
+                attachments: msg.attachments,
+              }],
               conversation_indexes: Array.isArray(c.conversation_indexes) && c.conversation_indexes.length > 0
                 ? [
                     {
@@ -330,7 +358,7 @@ export function useMessaging(selectedConversation: Conversation | null) {
       setMessages((prev) =>
         prev.map((m) =>
           m.id === data.messageId
-            ? { ...m, seen_by: [...(m.seen_by || []), { userId: data.userId, fullName: "User", seenAt: data.seenAt }] }
+            ? { ...m, status: (data.userId !== session?.userId ? "seen" : m.status) as any, seen_by: [...(m.seen_by || []), { userId: data.userId, fullName: "User", seenAt: data.seenAt }] }
             : m
         )
       );
@@ -377,16 +405,21 @@ export function useMessaging(selectedConversation: Conversation | null) {
       fetchHistory(selectedConversationId);
       socketRef.current?.emit("join_conversation", selectedConversationId);
 
+      // Clear unseen count for this conversation when we open it
+      setUnseenCounts((prev) => {
+        if (!prev[selectedConversationId]) return prev;
+        const newCounts = { ...prev };
+        delete newCounts[selectedConversationId];
+        return newCounts;
+      });
+
       // Also trigger mark_as_read for the current conversation state if available
       const conv = conversations.find(c => c.id === selectedConversationId);
       const lastMsgId = conv?.messages?.[0]?.id || (conv as any)?.last_message_id;
       const lastSenderId = conv?.conversation_indexes?.[0]?.last_sender_id || (conv as any)?.last_sender_id;
       
       if (lastMsgId && lastSenderId && lastSenderId !== session?.userId) {
-        socketRef.current?.emit("mark_as_read", { 
-          conversationId: selectedConversationId, 
-          messageId: lastMsgId 
-        });
+        emitMarkAsRead(selectedConversationId, lastMsgId);
       }
     }
     return () => {
