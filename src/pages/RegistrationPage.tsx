@@ -128,7 +128,11 @@ function RegistrationPage() {
                     const offeringsData = await fetchOfferings({ programType });
 
                     if (offeringsData?.offerings) {
-                        const matched = offeringsData.offerings.find((o) => {
+                        const searchParams = new URLSearchParams(window.location.search);
+                        const queryOfferingId = searchParams.get('offeringId');
+
+                        const matched = (queryOfferingId ? offeringsData.offerings.find((o) => o.isActive && o.programType === programType && o.offeringId === queryOfferingId) : undefined)
+                            || offeringsData.offerings.find((o) => {
                             return o.isActive && o.programType === programType && o.offeringId === requestedSlug
                         }) || offeringsData.offerings.find((o) => {
                             return o.isActive && o.programType === programType && toRouteSlug(o.title || '') === normalizedRequestedSlug
