@@ -129,7 +129,17 @@ function RegistrationPage() {
 
                     if (offeringsData?.offerings) {
                         const searchParams = new URLSearchParams(window.location.search);
-                        const queryOfferingId = searchParams.get('offeringId');
+                        let queryOfferingId = searchParams.get('offeringId');
+                        
+                        if (!queryOfferingId) {
+                            try {
+                                const saved = localStorage.getItem(STORAGE_KEY);
+                                if (saved) {
+                                    const parsed = JSON.parse(saved);
+                                    if (parsed.offeringId) queryOfferingId = parsed.offeringId;
+                                }
+                            } catch (e) {}
+                        }
 
                         const matched = (queryOfferingId ? offeringsData.offerings.find((o) => o.isActive && o.programType === programType && o.offeringId === queryOfferingId) : undefined)
                             || offeringsData.offerings.find((o) => {
@@ -138,7 +148,7 @@ function RegistrationPage() {
                             return o.isActive && o.programType === programType && toRouteSlug(o.title || '') === normalizedRequestedSlug
                         }) || offeringsData.offerings.find((o) => {
                             return o.isActive && o.programType === programType && toRouteSlug(o.course?.slug || '') === normalizedRequestedSlug
-                        }) || offeringsData.offerings.find((o) => o.isActive && o.programType === programType)
+                        });
 
                         if (matched) {
                             setRegistrationData(prev => ({
@@ -237,17 +247,18 @@ function RegistrationPage() {
         
         const assessmentRequired = data.assessmentRequired !== undefined ? data.assessmentRequired : registrationData.assessmentRequired;
         const paymentMode = data.paymentMode || registrationData.paymentMode || 'direct';
+        const offeringIdParam = registrationData.offeringId ? `?offeringId=${registrationData.offeringId}` : '';
         
         if (assessmentRequired === false) {
             // No assessment — go to payment or success based on paymentMode
             if (paymentMode === 'direct') {
-                setLocation(`/registration/${currentProgramType}/${slug}/payment`);
+                setLocation(`/registration/${currentProgramType}/${slug}/payment${offeringIdParam}`);
             } else {
                 // email_code or none — skip in-app payment
-                setLocation(`/registration/${currentProgramType}/${slug}/success`);
+                setLocation(`/registration/${currentProgramType}/${slug}/success${offeringIdParam}`);
             }
         } else {
-            setLocation(`/registration/${currentProgramType}/${slug}/assessment`);
+            setLocation(`/registration/${currentProgramType}/${slug}/assessment${offeringIdParam}`);
         }
     }
 
@@ -256,10 +267,11 @@ function RegistrationPage() {
         const slug = successParams?.courseSlug || paymentParams?.courseSlug || assessmentParams?.courseSlug || courseParams?.courseSlug || toRouteSlug(registrationData.specificCourse || '');
         const currentProgramType = registrationData.programType || programType;
         const paymentMode = registrationData.paymentMode || 'direct';
+        const offeringIdParam = registrationData.offeringId ? `?offeringId=${registrationData.offeringId}` : '';
         
         if (paymentMode === 'direct') {
             // On-Demand: go to in-app payment step
-            setLocation(`/registration/${currentProgramType}/${slug}/payment`);
+            setLocation(`/registration/${currentProgramType}/${slug}/payment${offeringIdParam}`);
         } else if (paymentMode === 'email_code') {
             // Cohort/Workshop: generate payment code, then go to success
             try {
@@ -272,11 +284,11 @@ function RegistrationPage() {
                 console.error('Failed to generate payment code:', err);
             }
             localStorage.removeItem(STORAGE_KEY);
-            setLocation(`/registration/${currentProgramType}/${slug}/success`);
+            setLocation(`/registration/${currentProgramType}/${slug}/success${offeringIdParam}`);
         } else {
             // none: no payment needed
             localStorage.removeItem(STORAGE_KEY);
-            setLocation(`/registration/${currentProgramType}/${slug}/success`);
+            setLocation(`/registration/${currentProgramType}/${slug}/success${offeringIdParam}`);
         }
     }
 
@@ -284,7 +296,8 @@ function RegistrationPage() {
         const slug = successParams?.courseSlug || paymentParams?.courseSlug || assessmentParams?.courseSlug || courseParams?.courseSlug || toRouteSlug(registrationData.specificCourse || '')
         // Clear localStorage on success
         localStorage.removeItem(STORAGE_KEY)
-        setLocation(`/registration/${registrationData.programType}/${slug}/success`)
+        const offeringIdParam = registrationData.offeringId ? `?offeringId=${registrationData.offeringId}` : '';
+        setLocation(`/registration/${registrationData.programType}/${slug}/success${offeringIdParam}`)
     }
 
     const goBack = (targetStep: number) => {
